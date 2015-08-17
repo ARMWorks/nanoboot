@@ -30,7 +30,7 @@ _TEXT_BASE:
 lowlevel_init:
     mov r12, lr
 
-    /* Turn on LED (GPB5 active low) */
+    /* Turn off LED (GPB5 active low) */
     ldr r0, =ELFIN_GPIO_BASE
     ldr r2, [r0, #GPBCON_OFFSET]
     bic r2, #0xC00
@@ -39,6 +39,7 @@ lowlevel_init:
 
     ldr r2, [r0, #GPBDAT_OFFSET]
     bic r2, #0x20
+    orr r1, r2, #0x20
     str r1, [r0, #GPBDAT_OFFSET]
 
     /* Disable Watchdog */

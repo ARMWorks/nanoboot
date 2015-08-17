@@ -21,6 +21,7 @@
 #include "atags.h"
 #include "config.h"
 #include "configfile.h"
+#include "panic.h"
 
 FATFS fs;
 
@@ -31,15 +32,13 @@ static void load_image(const char *name, void *load_at)
 
     fr = f_open(&f, name, FA_READ);
     if (fr != FR_OK) {
-        printf("error opening %s: %d\n", name, (int)fr);
-        while (1);
+        panic("error opening %s: %d\n", name, (int)fr);
     }
 
     unsigned int nread;
     fr = f_read(&f, load_at, (8*1024*1024), &nread); 
     if (fr != FR_OK) {
-        printf("error reading %s: %d\n", name, (int)fr);
-        while (1);
+        panic("error reading %s: %d\n", name, (int)fr);
     }
 
     f_close(&f);
@@ -53,8 +52,7 @@ void main(void)
 
     fr = f_mount(&fs, "", 1);
     if (fr != FR_OK) {
-        printf("error mounting FAT: %d\n", (int)fr);
-        while (1);
+        panic("error mounting FAT: %d\n", (int)fr);
     }
 
     void *exec_at = (void *)PHYS_SDRAM_1 + 0x8000 + (32*1024*1024);

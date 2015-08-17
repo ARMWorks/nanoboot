@@ -21,10 +21,12 @@
 #include <stdlib.h>
 #include "fatfs/ff.h"
 #include "configfile.h"
+#include "panic.h"
 
 
 static int cmdline_property(char *s)
 {
+    printf("cmdline = %s\n", s);
     return 0;
 }
 
@@ -55,13 +57,13 @@ static void handle_property(char *s, char *value, int lineno)
         switch (property->type) {
         case PROPERTY_TYPE_INT:
             if (property->handler.f_int(strtoul(value, NULL, 0))) {
-                printf("error on line %d: invalid value for \"%s\" property\n",
+                panic("error on line %d: invalid value for \"%s\" property\n",
                        lineno, s);
             }
             break;
         case PROPERTY_TYPE_STR:
             if (property->handler.f_str(value)) {
-                printf("error on line %d: invalid value for \"%s\" property\n",
+                panic("error on line %d: invalid value for \"%s\" property\n",
                        lineno, s);
             }
             break;
@@ -70,7 +72,7 @@ static void handle_property(char *s, char *value, int lineno)
         return;
     }
 
-    printf("error on line %d: unknown property \"%s\"\n", lineno, s);
+    panic("error on line %d: unknown property \"%s\"\n", lineno, s);
 }
 
 static void handle_directive(char *s, int lineno)
@@ -98,7 +100,7 @@ static void handle_directive(char *s, int lineno)
         switch (directive->type) {
         case DIRECTIVE_TYPE_NIL:
             if (strlen(arg) > 0) {
-                printf("error on line %d: \"%s\" directive does not take an "
+                panic("error on line %d: \"%s\" directive does not take an "
                        "argument\n", lineno, s);
                 break;
             }
@@ -108,7 +110,7 @@ static void handle_directive(char *s, int lineno)
 
         case DIRECTIVE_TYPE_STR:
             if (directive->handler.f_str(arg)) {
-                printf("error on line %d: invalid argument for \"%s\" "
+                panic("error on line %d: invalid argument for \"%s\" "
                        "directive", lineno, s);
                 break;
             }
@@ -117,7 +119,7 @@ static void handle_directive(char *s, int lineno)
         return;
     }
 
-    printf("error on line %d: unknown directive \"%s\"\n", lineno, s);
+    panic("error on line %d: unknown directive \"%s\"\n", lineno, s);
 }
 
 static void parse_line(char *line, int lineno)
@@ -171,7 +173,7 @@ void read_configfile(void)
 
     fr = f_open(&f, "nanoboot.txt", FA_READ);
     if (fr != FR_OK) {
-        printf("error opening nanoboot.txt: %d\n", (int)fr);
+        panic("error opening nanoboot.txt: %d\n", (int)fr);
         while (1);
     }
 
