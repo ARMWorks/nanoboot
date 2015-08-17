@@ -6,11 +6,11 @@
 #ifndef __ASSEMBLY__
 #define UData(Data) ((unsigned long) (Data))
 
-#define __REG(x) (*(vu_long *)(x))
-#define __REGl(x) (*(vu_long *)(x))
-#define __REGw(x) (*(vu_short *)(x))
-#define __REGb(x) (*(vu_char *)(x))
-#define __REG2(x,y) (*(vu_long *)((x) + (y)))
+#define __REG(x) (*(volatile unsigned long *)(x))
+#define __REGl(x) (*(volatile unsigned long *)(x))
+#define __REGw(x) (*(volatile unsigned short *)(x))
+#define __REGb(x) (*(volatile unsigned char *)(x))
+#define __REG2(x,y) (*(volatile unsigned long *)((x) + (y)))
 #else
 #define UData(Data) (Data)
 
