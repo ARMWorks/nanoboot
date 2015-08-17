@@ -20,4 +20,6 @@
 
 #include <stddef.h>
 
+unsigned long int strtoul(const char *nptr, char **endptr, int base);
+
 #endif /* _STDLIB_H */

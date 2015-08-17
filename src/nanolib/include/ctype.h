@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Jeff Kent <jeff@jkent.net>
+ * Copyright (C) 2015 Jeff Kent <jeff@jkent.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,21 +15,43 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _STRING_H
-#define _STRING_H
+inline int isspace(int c)
+{
+    return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' 
+        || c == '\v';
+}
 
-#include <stddef.h>
+inline int isdigit(int c)
+{
+    return c >= '0' && c <= '9';
+}
 
-void *memcpy(void *dest, const void *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n);
-void *memset (void *s, int c, size_t n);
-char *strcpy(char *dest, const char *src);
-int strcmp(const char *s1, const char *s2);
-size_t strlen(const char *s);
-int strncmp(const char *s1, const char *s2, size_t n);
+inline int islower(int c)
+{
+    return c >= 'a' && c <= 'z';
+}
 
-/* non-standard functions */
-char *ltrim_inplace(char *s);
-char *rtrim_inplace(char *s);
+inline int isupper(int c)
+{
+    return c >= 'A' && c <= 'Z';
+}
 
-#endif /* _STRING_H */
+inline int isalpha(int c)
+{
+    return isupper(c) || islower(c);
+}
+
+inline int isalnum(int c)
+{
+    return isalpha(c) || isdigit(c);
+}
+
+inline int tolower(int c)
+{
+    return isupper(c) ? c + 32 : c;
+}
+
+inline int toupper(int c)
+{
+    return islower(c) ? c - 32 : c;
+}

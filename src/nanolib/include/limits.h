@@ -15,21 +15,22 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _STRING_H
-#define _STRING_H
+#ifndef __LIMITS_H__
+#define __LIMITS_H__
 
-#include <stddef.h>
+#define CHAR_MAX                255
+#define CHAR_MIN                  0
+#define INT_MIN         -2147483647
+#define INT_MAX          2147483647
+#define LONG_MIN        -2147483647
+#define LONG_MAX         2147483647
+#define SCHAR_MIN              -127
+#define SCHAR_MAX               127
+#define SHRT_MIN             -32767
+#define SHRT_MAX              32767
+#define UCHAR_MAX               255
+#define UINT_MAX         4294967295
+#define ULONG_MAX        4294967295
+#define USHRT_MAX             65535
 
-void *memcpy(void *dest, const void *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n);
-void *memset (void *s, int c, size_t n);
-char *strcpy(char *dest, const char *src);
-int strcmp(const char *s1, const char *s2);
-size_t strlen(const char *s);
-int strncmp(const char *s1, const char *s2, size_t n);
-
-/* non-standard functions */
-char *ltrim_inplace(char *s);
-char *rtrim_inplace(char *s);
-
-#endif /* _STRING_H */
+#endif /*__LIMITS_H__*/

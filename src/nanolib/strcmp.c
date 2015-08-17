@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Jeff Kent <jeff@jkent.net>
+ * Copyright (C) 2015 Jeff Kent <jeff@jkent.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,21 +15,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _STRING_H
-#define _STRING_H
-
-#include <stddef.h>
-
-void *memcpy(void *dest, const void *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n);
-void *memset (void *s, int c, size_t n);
-char *strcpy(char *dest, const char *src);
-int strcmp(const char *s1, const char *s2);
-size_t strlen(const char *s);
-int strncmp(const char *s1, const char *s2, size_t n);
-
-/* non-standard functions */
-char *ltrim_inplace(char *s);
-char *rtrim_inplace(char *s);
-
-#endif /* _STRING_H */
+int strcmp(const char *s1, const char *s2)
+{
+    while (*s1 == *s2++) {
+        if (*s1++ == '\0')
+            return 0;
+    }
+    return *s1 - *--s2;
+}

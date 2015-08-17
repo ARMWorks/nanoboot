@@ -20,6 +20,7 @@
 #include "fatfs/ff.h"
 #include "atags.h"
 #include "config.h"
+#include "configfile.h"
 
 FATFS fs;
 
@@ -58,6 +59,8 @@ void main(void)
 
     void *exec_at = (void *)PHYS_SDRAM_1 + 0x8000 + (32*1024*1024);
     void *parm_at = (void *)PHYS_SDRAM_1 + 0x100;
+
+    read_configfile();
 
     load_image("zImage", exec_at);
 
