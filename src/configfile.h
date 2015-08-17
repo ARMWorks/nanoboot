@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Jeff Kent <jeff@jkent.net>
+ * Copyright (C) 2015 Jeff Kent <jeff@jkent.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,24 +15,24 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _STRING_H
-#define _STRING_H
+#ifndef __CONFIGFILE_H__
+#define __CONFIGFILE_H__
 
+#include <stdbool.h>
 #include <stddef.h>
 
-void *memcpy(void *dest, const void *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n);
-void *memset (void *s, int c, size_t n);
-char *strcat(char *dest, const char *src);
-char *strcpy(char *dest, const char *src);
-int strcmp(const char *s1, const char *s2);
-size_t strlen(const char *s);
-char *strncat(char *dest, const char *src, size_t n);
-char *strncpy(char *dest, const char *src, size_t n);
-int strncmp(const char *s1, const char *s2, size_t n);
+typedef struct {
+    bool quiet;
+    char cmdline[1024];
+    char kernel[64];
+    unsigned int kernel_address;
+    unsigned int ramfsaddr;
+    char ramfsfile[64];
+    size_t ramfssize;
+} config_t;
 
-/* non-standard functions */
-char *ltrim_inplace(char *s);
-char *rtrim_inplace(char *s);
+extern config_t config;
 
-#endif /* _STRING_H */
+void read_configfile(void);
+
+#endif /*__CONFIGFILE_H__*/

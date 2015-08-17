@@ -16,35 +16,113 @@
  */
 
 #include <ctype.h>
-#include <string.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "fatfs/ff.h"
 #include "configfile.h"
 #include "panic.h"
+#include "config.h"
 
+const char CMDLINE_DEFAULT[] = "console=ttySAC0,115200 root=/dev/mmcblk0p2 "
+                               "rootfstype=ext4 rootwait";
+const char KERNEL_DEFAULT[] = "zImage";
+const unsigned int KERNEL_ADDRESS_DEFAULT = PHYS_SDRAM_1 + 0x8000;
+const char RAMFSFILE_DEFAULT[] = "";
+const unsigned int RAMFSADDR_DEFAULT = PHYS_SDRAM_1 + 0xA00000;
 
-static int cmdline_property(char *s)
+config_t config;
+
+static void cmdline_set(char *s, int lineno)
 {
-    printf("cmdline = %s\n", s);
-    return 0;
+    strncpy(config.cmdline, s, sizeof(config.cmdline));
+    config.cmdline[sizeof(config.cmdline) - 1] = '\0';
 }
+
+static void cmdline_append(char *s, int lineno)
+{
+    strncat(config.cmdline, " ", sizeof(config.cmdline));
+    strncat(config.cmdline, s, sizeof(config.cmdline));
+}
+
+static void kernel_set(char *s, int lineno)
+{
+    strncpy(config.kernel, s, sizeof(config.kernel));
+    config.kernel[sizeof(config.kernel) - 1] = '\0';
+}
+
+static void kernel_address_set(char *s, int lineno)
+{
+    unsigned int addr = strtoul(s, NULL, 0);
+    if ((addr < PHYS_SDRAM_1 + 0x8000)
+        || (addr >= PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE)) {
+        panic("config error on line %d: \"kernel_address\" outside of SDRAM "
+              "range\n", lineno);
+    }
+
+    if (addr >= PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE - CFG_NANOBOOT_SIZE) {
+        panic("config error on line %d: \"kernel_address\" is within "
+              "nanoboot's reserved memory", lineno);
+    }
+
+    config.kernel_address = addr;
+}
+
+static void ramfsaddr_set(char *s, int lineno)
+{
+    unsigned int addr = strtoul(s, NULL, 0);
+    if ((addr < PHYS_SDRAM_1 + 0x8000)
+        || (addr >= PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE)) {
+        panic("config error on line %d: \"ramfsaddr\" is outside of SDRAM "
+              "range\n", lineno);
+    }
+
+    if (addr >= PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE - CFG_NANOBOOT_SIZE) {
+        panic("config error on line %d: \"ramfsaddr\" is within nanoboot's "
+              "reserved memory", lineno);
+    }
+
+    config.ramfsaddr = addr;
+}
+
+static void ramfsfile_set(char *s, int lineno)
+{
+    strncpy(config.ramfsfile, s, sizeof(config.ramfsfile));
+    config.ramfsfile[sizeof(config.ramfsfile) - 1] = '\0';
+}
+
+static void quiet(char *s, int lineno)
+{
+    config.quiet = true;
+}
+
+typedef struct {
+    const char *name;
+    void (*set)(char *s, int lineno);
+    void (*append)(char *s, int lineno);
+} property_t;
 
 static const property_t properties[] = {
-    {"cmdline", PROPERTY_TYPE_STR, {.f_str = cmdline_property}},
+    {"cmdline",        cmdline_set,        cmdline_append},
+    {"kernel",         kernel_set,         NULL          },
+    {"kernel_address", kernel_address_set, NULL          },
+    {"ramfsaddr",      ramfsaddr_set,      NULL          },
+    {"ramfsfile",      ramfsfile_set,      NULL          },
     {NULL},
 };
 
-static void quiet_directive() {
-    printf("quiet!\n");
-}
+typedef struct {
+    const char *name;
+    void (*call)(char *s, int lineno);
+} directive_t;
 
 static const directive_t directives[] = {
-    {"quiet", DIRECTIVE_TYPE_NIL, {.f_nil = quiet_directive}},
+    {"quiet", quiet},
     {NULL},
 };
 
-static void handle_property(char *s, char *value, int lineno)
+static void handle_property(char *s, char *value, bool append, int lineno)
 {
     const property_t *property = properties;
 
@@ -54,88 +132,61 @@ static void handle_property(char *s, char *value, int lineno)
             continue;
         }
 
-        switch (property->type) {
-        case PROPERTY_TYPE_INT:
-            if (property->handler.f_int(strtoul(value, NULL, 0))) {
-                panic("error on line %d: invalid value for \"%s\" property\n",
-                       lineno, s);
+        if (append) {
+            if (!property->append) {
+                panic("config error on line %d: append not allowed for "
+                      "\"%s\" property", lineno, s);
             }
-            break;
-        case PROPERTY_TYPE_STR:
-            if (property->handler.f_str(value)) {
-                panic("error on line %d: invalid value for \"%s\" property\n",
-                       lineno, s);
-            }
-            break;
-        }
 
+            property->append(value, lineno);
+        } else {
+            property->set(value, lineno);
+        }
         return;
     }
 
-    panic("error on line %d: unknown property \"%s\"\n", lineno, s);
+    panic("config error on line %d: unknown property \"%s\"\n", lineno, s);
 }
 
 static void handle_directive(char *s, int lineno)
 {
-    const directive_t *directive;
-    char *p, *arg;
-
-    p = s;
+    char *p = s;
     while (*p && *p != ' ') {
         p++;
     }
-    arg = p;
+
+    char *arg = p;
     while(*arg == ' ') {
         arg++;
     }
     *p = '\0';
 
-    directive = directives;
+    const directive_t *directive = directives;
     while (directive->name) {
         if (strcmp(s, directive->name) != 0) {
             directive++;
             continue;
         }
 
-        switch (directive->type) {
-        case DIRECTIVE_TYPE_NIL:
-            if (strlen(arg) > 0) {
-                panic("error on line %d: \"%s\" directive does not take an "
-                       "argument\n", lineno, s);
-                break;
-            }
-
-            directive->handler.f_nil();
-            break;
-
-        case DIRECTIVE_TYPE_STR:
-            if (directive->handler.f_str(arg)) {
-                panic("error on line %d: invalid argument for \"%s\" "
-                       "directive", lineno, s);
-                break;
-            }
-            break;
-        }
+        directive->call(arg, lineno);
         return;
     }
 
-    panic("error on line %d: unknown directive \"%s\"\n", lineno, s);
+    panic("config error on line %d: unknown directive \"%s\"\n", lineno, s);
 }
 
 static void parse_line(char *line, int lineno)
 {
-    char *s;
-    char *value;
-
     ltrim_inplace(line);
 
     if (*line == '\0' || *line == '#') {
         return;
     }
 
-    s = line;
+    char *s = line;
 
-    while (*line && *line != '=' && *line != '#') {
+    while (*line && !((*line == '+' && *(line + 1) == '=') || *line == '='
+                      || *line == '#')) {
         line++;
     }
 
@@ -146,12 +197,18 @@ static void parse_line(char *line, int lineno)
         return;
     }
 
-    *line = '\0';
+    bool append = false;
+    if (*line == '+' && *(line + 1) == '=') {
+        append = true;
+        *line = '\0';
+        line += 2;
+    } else {
+        *line++ = '\0';
+    }
+
     rtrim_inplace(s);
 
-    line++;
-
-    value = line;
+    char *value = line;
     ltrim_inplace(value);
 
     while (*line && *line != '#') {
@@ -161,7 +218,7 @@ static void parse_line(char *line, int lineno)
     *line = '\0';
     rtrim_inplace(value);
 
-    handle_property(s, value, lineno);
+    handle_property(s, value, append, lineno);
 }
 
 void read_configfile(void)
@@ -171,15 +228,19 @@ void read_configfile(void)
     char line[512];
     int lineno = 1;
 
+    config.quiet = false;
+    strcpy(config.cmdline, CMDLINE_DEFAULT);
+    config.kernel_address = KERNEL_ADDRESS_DEFAULT;
+    strcpy(config.kernel, KERNEL_DEFAULT);
+    config.ramfsaddr = RAMFSADDR_DEFAULT;
+    strcpy(config.ramfsfile, RAMFSFILE_DEFAULT);
+
     fr = f_open(&f, "nanoboot.txt", FA_READ);
-    if (fr != FR_OK) {
-        panic("error opening nanoboot.txt: %d\n", (int)fr);
-        while (1);
-    }
+    if (fr == FR_OK) {
+        while (f_gets(line, sizeof line, &f)) {
+            parse_line(line, lineno++);
+        }
 
-    while (f_gets(line, sizeof line, &f)) {
-        parse_line(line, lineno++);
+        f_close(&f);
     }
-
-    f_close(&f);
 }

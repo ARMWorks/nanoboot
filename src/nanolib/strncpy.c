@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Jeff Kent <jeff@jkent.net>
+ * Copyright (C) 2015 Jeff Kent <jeff@jkent.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,24 +15,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _STRING_H
-#define _STRING_H
-
 #include <stddef.h>
 
-void *memcpy(void *dest, const void *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n);
-void *memset (void *s, int c, size_t n);
-char *strcat(char *dest, const char *src);
-char *strcpy(char *dest, const char *src);
-int strcmp(const char *s1, const char *s2);
-size_t strlen(const char *s);
-char *strncat(char *dest, const char *src, size_t n);
-char *strncpy(char *dest, const char *src, size_t n);
-int strncmp(const char *s1, const char *s2, size_t n);
+char *strncpy(char *dest, const char *src, size_t n)
+{
+    size_t i;
 
-/* non-standard functions */
-char *ltrim_inplace(char *s);
-char *rtrim_inplace(char *s);
+    for (i = 0; i < n && src[i] != '\0'; i++)
+        dest[i] = src[i];
+    for ( ; i < n; i++)
+        dest[i] = '\0';
 
-#endif /* _STRING_H */
+    return dest;
+}

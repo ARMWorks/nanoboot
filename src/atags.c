@@ -19,58 +19,88 @@
 #include <string.h>
 #include "atags.h"
 #include "config.h"
+#include "configfile.h"
 
 static struct atag *params; /* used to point at the current tag */
 
-static void setup_core_atag(void *address, long pagesize)
+static void setup_core_atag(void * address, long pagesize)
 {
-    params = (struct atag *)address;
+    params = (struct atag *)address;         /* Initialise parameters to start at given address */
 
-    params->hdr.tag = ATAG_CORE;
-    params->hdr.size = atag_size(atag_core);
+    params->hdr.tag = ATAG_CORE;            /* start with the core tag */
+    params->hdr.size = atag_size(atag_core); /* size the tag */
 
-    params->u.core.flags = 1;
-    params->u.core.pagesize = pagesize;
-    params->u.core.rootdev = 0;
+    params->u.core.flags = 1;               /* ensure read-only */
+    params->u.core.pagesize = pagesize;     /* systems pagesize (4k) */
+    params->u.core.rootdev = 0;             /* zero root device (typicaly overidden from commandline )*/
 
-    params = atag_next(params);
+    params = atag_next(params);              /* move pointer to next tag */
 }
 
-static void setup_mem_atag(u32 start, u32 len)
+#if 0
+static void setup_ramdisk_atag(size_t size)
 {
-    params->hdr.tag = ATAG_MEM;
-    params->hdr.size = atag_size(atag_mem);
+    params->hdr.tag = ATAG_RAMDISK;         /* Ramdisk tag */
+    params->hdr.size = atag_size(atag_ramdisk);  /* size tag */
 
-    params->u.mem.start = start;
-    params->u.mem.size = len;
+    params->u.ramdisk.flags = 0;            /* Load the ramdisk */
+    params->u.ramdisk.size = size;          /* Decompressed ramdisk size */
+    params->u.ramdisk.start = 0;            /* Unused */
 
-    params = atag_next(params);
+    params = atag_next(params);              /* move pointer to next tag */
+}
+#endif
+
+static void setup_initrd2_atag(unsigned int start, size_t size)
+{
+    params->hdr.tag = ATAG_INITRD2;         /* Initrd2 tag */
+    params->hdr.size = atag_size(atag_initrd2);  /* size tag */
+
+    params->u.initrd2.start = start;        /* physical start */
+    params->u.initrd2.size = size;          /* compressed ramdisk size */
+
+    params = atag_next(params);              /* move pointer to next tag */
 }
 
-static void setup_cmdline_atag(const char *line)
+static void setup_mem_atag(unsigned int start, size_t len)
+{
+    params->hdr.tag = ATAG_MEM;             /* Memory tag */
+    params->hdr.size = atag_size(atag_mem);  /* size tag */
+
+    params->u.mem.start = start;            /* Start of memory area (physical address) */
+    params->u.mem.size = len;               /* Length of area */
+
+    params = atag_next(params);              /* move pointer to next tag */
+}
+
+static void setup_cmdline_atag(const char * line)
 {
     int linelen = strlen(line);
-    if (!linelen)
-        return;
 
-    params->hdr.tag = ATAG_CMDLINE;
+    if(!linelen)
+        return;                             /* do not insert a tag for an empty commandline */
+
+    params->hdr.tag = ATAG_CMDLINE;         /* Commandline tag */
     params->hdr.size = (sizeof(struct atag_header) + linelen + 1 + 4) >> 2;
 
-    strcpy(params->u.cmdline.cmdline, line);
+    strcpy(params->u.cmdline.cmdline,line); /* place commandline into tag */
 
-    params = atag_next(params);
+    params = atag_next(params);              /* move pointer to next tag */
 }
 
 static void setup_end_atag(void)
 {
-    params->hdr.tag = ATAG_NONE;
-    params->hdr.size = 0;
+    params->hdr.tag = ATAG_NONE;            /* Empty tag ends list */
+    params->hdr.size = 0;                   /* zero length */
 }
 
 void setup_atags(void *parameters)
 {
     setup_core_atag(parameters, 4096);
     setup_mem_atag(PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE);
-    setup_cmdline_atag("root=/dev/mmcblk0p2 rootfstype=ext4 init=/sbin/init console=ttySAC0,115200");
+    if (strlen(config.ramfsfile)) {
+        setup_initrd2_atag(config.ramfsaddr, config.ramfssize);
+    }
+    setup_cmdline_atag(config.cmdline);
     setup_end_atag();
 }
