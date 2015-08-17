@@ -1,7 +1,25 @@
-#ifndef __ATAG_H__
-#define __ATAG_H__
+/*
+ * Copyright (C) 2004 Vincent Sanders <vince@arm.linux.org.uk>
+ * Copyright (C) 2015 Jeff Kent <jeff@jkent.net>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
 
-#include "asm/types.h"
+#ifndef __ATAGS_H__
+#define __ATAGS_H__
+
+#include <asm/types.h>
 
 /* list of possible tags */
 #define ATAG_NONE       0x00000000
@@ -106,4 +124,4 @@ struct atag {
 
 void setup_atags(void *parameters);
 
-#endif
+#endif /* __ATAGS_H__ */

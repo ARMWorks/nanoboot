@@ -25,21 +25,21 @@
  */
 void serial_putc(const char c)
 {
-	S3C24X0_UART *const uart = S3C24X0_GetBase_UART(S3C24X0_UART0);
+    S3C24X0_UART *const uart = S3C24X0_GetBase_UART(S3C24X0_UART0);
 
-	/* wait for room in the tx FIFO */
-	while (!(uart->UTRSTAT & 0x2));
+    /* wait for room in the tx FIFO */
+    while (!(uart->UTRSTAT & 0x2));
 
-	uart->UTXH = c;
+    uart->UTXH = c;
 
-	/* If \n, also do \r */
-	if (c == '\n')
-		serial_putc('\r');
+    /* If \n, also do \r */
+    if (c == '\n')
+        serial_putc('\r');
 }
 
 void serial_puts(const char *s)
 {
-	while (*s) {
-		serial_putc(*s++);
-	}
+    while (*s) {
+        serial_putc(*s++);
+    }
 }

@@ -20,9 +20,9 @@
 
 int printf(const char *fmt, ...)
 {
-	va_list va;
-	va_start(va, fmt);
-	vprintf(fmt, va);
-	va_end(va);
-	return 0;
+    va_list va;
+    va_start(va, fmt);
+    vprintf(fmt, va);
+    va_end(va);
+    return 0;
 }

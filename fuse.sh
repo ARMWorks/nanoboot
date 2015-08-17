@@ -47,7 +47,7 @@ dd if=build/nanoboot.bin of=build/nanoboot-256k.bin conv=notrunc &> /dev/null
 umount /dev/${DEV_NAME}* > /dev/null 2>&1
 
 dd if=build/nanoboot-256k.bin of=/dev/${DEV_NAME} bs=512 seek=${BL2_POSITION} conv=fdatasync &> /dev/null
+dd if=build/nanoboot-256k.bin of=/dev/${DEV_NAME} bs=512 seek=${BL1_POSITION} count=16 conv=fdatasync &> /dev/null
 rm build/nanoboot-256k.bin
-dd if=build/nanoboot.bin of=/dev/${DEV_NAME} bs=512 seek=${BL1_POSITION} count=16 conv=fdatasync &> /dev/null
 
 echo "nanoboot fused"

@@ -19,13 +19,13 @@
 
 void *memcpy(void *dest, void *src, size_t n)
 {
-	unsigned char *dst8 = (unsigned char *)dest;
-	unsigned char *src8 = (unsigned char *)src;
+    unsigned char *dst8 = (unsigned char *)dest;
+    unsigned char *src8 = (unsigned char *)src;
 
-	while (n--) {
-		*dst8++ = *src8++;
-	}
+    while (n--) {
+        *dst8++ = *src8++;
+    }
 
-	return dest;
+    return dest;
 }
 
