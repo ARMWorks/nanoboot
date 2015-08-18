@@ -26,7 +26,7 @@
 
 FATFS fs;
 
-static size_t load_image(const char *name, void *load_at)
+static size_t load_image(const TCHAR *name, void *load_at)
 {
     FRESULT fr;
     FIL f;

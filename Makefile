@@ -26,7 +26,7 @@ BL1_AFILES := $(wildcard src/bl1/*.S)
 BL1_CFILES := $(wildcard src/bl1/*.c)
 BL1_OFILES := $(BL1_AFILES:src/bl1/%.S=build/bl1/%.o) $(BL1_CFILES:src/bl1/%.c=build/bl1/%.o)
 
-CFILES := $(wildcard src/*.c) $(wildcard src/nanolib/*.c) src/fatfs/ff.c src/fatfs/diskio.c
+CFILES := $(wildcard src/*.c) $(wildcard src/nanolib/*.c) $(wildcard src/fatfs/*.c) src/fatfs/option/unicode.c
 OFILES := $(BL1_OFILES) $(CFILES:src/%.c=build/%.o)
 
 ifeq ($(DEBUG),1)

@@ -27,9 +27,9 @@
 
 const char CMDLINE_DEFAULT[] = "console=ttySAC0,115200 root=/dev/mmcblk0p2 "
                                "rootfstype=ext4 rootwait";
-const char KERNEL_DEFAULT[] = "zImage";
+const TCHAR KERNEL_DEFAULT[] = _T("zImage");
 const unsigned int KERNEL_ADDRESS_DEFAULT = PHYS_SDRAM_1 + 0x8000;
-const char RAMFSFILE_DEFAULT[] = "";
+const TCHAR RAMFSFILE_DEFAULT[] = _T("");
 const unsigned int RAMFSADDR_DEFAULT = PHYS_SDRAM_1 + 0xA00000;
 
 config_t config;

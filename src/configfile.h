@@ -20,14 +20,15 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include "fatfs/ff.h"
 
 typedef struct {
     bool quiet;
     char cmdline[1024];
-    char kernel[64];
+    TCHAR kernel[256];
     unsigned int kernel_address;
     unsigned int ramfsaddr;
-    char ramfsfile[64];
+    TCHAR ramfsfile[256];
     size_t ramfssize;
 } config_t;
 
