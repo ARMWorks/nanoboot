@@ -37,7 +37,6 @@ static void setup_core_atag(void * address, long pagesize)
     params = atag_next(params);              /* move pointer to next tag */
 }
 
-#if 0
 static void setup_ramdisk_atag(size_t size)
 {
     params->hdr.tag = ATAG_RAMDISK;         /* Ramdisk tag */
@@ -49,7 +48,6 @@ static void setup_ramdisk_atag(size_t size)
 
     params = atag_next(params);              /* move pointer to next tag */
 }
-#endif
 
 static void setup_initrd2_atag(unsigned int start, size_t size)
 {

@@ -35,7 +35,7 @@ else
 	CFLAGS := -Os
 endif
 
-CFLAGS += -g3 -Wall -std=gnu99 -ffreestanding -fdata-sections -ffunction-sections -nostdinc -D__KERNEL__
+CFLAGS += -g3 -Wall -Wno-unused-function -std=gnu99 -ffreestanding -fdata-sections -ffunction-sections -nostdinc -D__KERNEL__
 CFLAGS += -mlittle-endian -msoft-float -mtune=arm926ej-s
 ASFLAGS := -Wa,--defsym,_entry=0 -D__ASSEMBLY__
 LDFLAGS := -nostartfiles -nodefaultlibs -nostdlib -static -Wl,--gc-sections
