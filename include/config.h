@@ -71,9 +71,11 @@
 #define	CFG_BANK_CON3_VAL	0x80000030
 #define	CFG_BANK_REFRESH_VAL	0x00000313
 
-#define CONFIG_NR_DRAM_BANKS	1	   /* we have 1 bank of DRAM */
 #define PHYS_SDRAM_1		0x30000000 /* SDRAM Bank #1 */
 #define PHYS_SDRAM_1_SIZE	0x04000000 /* 64 MB */
+
+#define PHYS_SDRAM_2		0x38000000 /* SDRAM Bank #2 */
+#define PHYS_SDRAM_2_SIZE	0x04000000 /* 64 MB */
 
 /* total memory used by nanoboot */
 #define CFG_NANOBOOT_SIZE		(2*1024*1024)

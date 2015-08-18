@@ -22,7 +22,13 @@
 #include <stddef.h>
 #include "fatfs/ff.h"
 
+typedef enum {
+    DEVICE_NANOPI = 0,
+    DEVICE_MINI2451,
+} device_t;
+
 typedef struct {
+    device_t device;
     bool quiet;
     char cmdline[1024];
     TCHAR kernel[256];

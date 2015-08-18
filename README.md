@@ -22,7 +22,9 @@ fix it.
 `nanoboot.txt` is an optional text you can create within the root of the FAT
 filesystem, which has a simple syntax allowing you to set various boot options:
 
-* `quiet` - don't produce any messages unless there is an error
+* `mini2451` - set Mini2451 device type (128 MB memory)
+* `nanopi` - (default) set NanoPi device type (64 MB memory)
+* `quiet` - don't produce any messages except for errors
 * `cmdline = ...` - set the kernel command line
   * default is `console=ttySAC0,115200 root=/dev/mmcblk0p2 rootfstype=ext4
     rootwait`

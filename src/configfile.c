@@ -28,9 +28,7 @@
 const char CMDLINE_DEFAULT[] = "console=ttySAC0,115200 root=/dev/mmcblk0p2 "
                                "rootfstype=ext4 rootwait";
 const TCHAR KERNEL_DEFAULT[] = _T("zImage");
-const unsigned int KERNEL_ADDRESS_DEFAULT = PHYS_SDRAM_1 + 0x8000;
 const TCHAR RAMFSFILE_DEFAULT[] = _T("");
-const unsigned int RAMFSADDR_DEFAULT = PHYS_SDRAM_1 + 0xA00000;
 
 config_t config;
 
@@ -92,6 +90,16 @@ static void ramfsfile_set(char *s, int lineno)
     config.ramfsfile[sizeof(config.ramfsfile) - 1] = '\0';
 }
 
+static void mini2451(char *s, int lineno)
+{
+    config.device = DEVICE_MINI2451;
+}
+
+static void nanopi(char *s, int lineno)
+{
+    config.device = DEVICE_NANOPI;
+}
+
 static void quiet(char *s, int lineno)
 {
     config.quiet = true;
@@ -118,7 +126,8 @@ typedef struct {
 } directive_t;
 
 static const directive_t directives[] = {
-    {"quiet", quiet},
+    {"mini2451", mini2451},
+    {"quiet",    quiet},
     {NULL},
 };
 
@@ -228,11 +237,12 @@ void read_configfile(void)
     char line[512];
     int lineno = 1;
 
+    config.device = DEVICE_NANOPI;
     config.quiet = false;
     strcpy(config.cmdline, CMDLINE_DEFAULT);
-    config.kernel_address = KERNEL_ADDRESS_DEFAULT;
+    config.kernel_address = PHYS_SDRAM_1 + 0x8000;
     strcpy(config.kernel, KERNEL_DEFAULT);
-    config.ramfsaddr = RAMFSADDR_DEFAULT;
+    config.ramfsaddr = PHYS_SDRAM_1 + 0xA00000;
     strcpy(config.ramfsfile, RAMFSFILE_DEFAULT);
 
     fr = f_open(&f, "nanoboot.txt", FA_READ);

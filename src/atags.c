@@ -96,6 +96,9 @@ void setup_atags(void *parameters)
 {
     setup_core_atag(parameters, 4096);
     setup_mem_atag(PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE);
+    if (config.device == DEVICE_MINI2451) {
+        setup_mem_atag(PHYS_SDRAM_2, PHYS_SDRAM_2_SIZE);
+    }
     if (strlen(config.ramfsfile)) {
         setup_initrd2_atag(config.ramfsaddr, config.ramfssize);
     }
