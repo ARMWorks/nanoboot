@@ -20,7 +20,7 @@
 void delay_init(void)
 {
     FClrFld(TCFG0_REG, fTCFG0_PRE1);
-    TCFG0_REG |= TCFG0_PRE1(24);
+    TCFG0_REG |= TCFG0_PRE1(32);
     FClrFld(TCFG1_REG, fTCFG1_MUX4);
 }
 
