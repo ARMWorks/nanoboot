@@ -29,6 +29,10 @@ _start:
     1: b 1b
     1: b 1b
 
+/* magic string */
+.asciz "nanoboot"
+.balign 16, 0
+
 .globl _bss_start
 _bss_start:
     .word __bss_start
