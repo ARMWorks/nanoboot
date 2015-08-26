@@ -108,8 +108,8 @@ system_clock_init:
     str r1, [r0, #CLKDIV0CON_OFFSET]
 
     ldr r1, [r0, #CLKDIV1CON_OFFSET]
-    bic r1, r1, #(0x3<<6)
-    orr r1, r1, #(0x1<<6)   /* HSMMCDIV_1 = 1 */
+    bic r1, r1, #(0xF<<4)
+    orr r1, r1, #(0x5<<4)   /* USBHOSTDIV = 1, HSMMCDIV_1 = 1 */
     str r1, [r0, #CLKDIV1CON_OFFSET]
 
     /* Set MPLL Locktime */
