@@ -72,9 +72,6 @@ let BL2_POSITION=${BL1_POSITION}-${BL2_SIZE}-${ENV_SIZE}
 dd if=/dev/zero bs=1k count=256 2> /dev/null | tr "\000" "\377" > build/nanoboot-256k.bin
 dd if=build/nanoboot.bin of=build/nanoboot-256k.bin conv=notrunc 2> /dev/null
 
-# umount partitions first
-umount /dev/${DEV_NAME}* > /dev/null 2>&1
-
 dd if=build/nanoboot-256k.bin of=/dev/${DEV_NAME} bs=512 seek=${BL2_POSITION} conv=fdatasync &> /dev/null
 dd if=build/nanoboot-256k.bin of=/dev/${DEV_NAME} bs=512 seek=${BL1_POSITION} count=16 conv=fdatasync &> /dev/null
 rm build/nanoboot-256k.bin
