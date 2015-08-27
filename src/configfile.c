@@ -127,7 +127,8 @@ typedef struct {
 
 static const directive_t directives[] = {
     {"mini2451", mini2451},
-    {"quiet",    quiet},
+    {"nanopi",   nanopi  },
+    {"quiet",    quiet   },
     {NULL},
 };
 
