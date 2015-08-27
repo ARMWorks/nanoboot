@@ -33,7 +33,7 @@ filesystem, which has a simple syntax allowing you to set various boot options:
   * default is `zImage`
 * `kernel_address = ...` - set the kernel load address
   * default is `0x30008000`
-* `ramfsaddr = ...` - set the initrd load address
-  * default is `0x30a00000`
-* `ramfsfile = ...` - set the initrd file
+* `initramfs = ...` - set the initramfs file
   * default is blank, meaning no initrd
+* `initramfs_address = ...` - set the initramfs load address
+  * default is `0x33000000`

@@ -28,7 +28,7 @@
 const char CMDLINE_DEFAULT[] = "console=ttySAC0,115200 root=/dev/mmcblk0p2 "
                                "rootfstype=ext4 rootwait";
 const TCHAR KERNEL_DEFAULT[] = _T("zImage");
-const TCHAR RAMFSFILE_DEFAULT[] = _T("");
+const TCHAR INITRAMFS_DEFAULT[] = _T("");
 
 config_t config;
 
@@ -67,27 +67,27 @@ static void kernel_address_set(char *s, int lineno)
     config.kernel_address = addr;
 }
 
-static void ramfsaddr_set(char *s, int lineno)
+static void initramfs_set(char *s, int lineno)
+{
+    strncpy(config.initramfs, s, sizeof(config.initramfs));
+    config.initramfs[sizeof(config.initramfs) - 1] = '\0';
+}
+
+static void initramfs_address_set(char *s, int lineno)
 {
     unsigned int addr = strtoul(s, NULL, 0);
     if ((addr < PHYS_SDRAM_1 + 0x8000)
         || (addr >= PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE)) {
-        panic("config error on line %d: \"ramfsaddr\" is outside of SDRAM "
-              "range\n", lineno);
+        panic("config error on line %d: \"initramfs_address\" is outside of "
+              "SDRAM range\n", lineno);
     }
 
     if (addr >= PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE - CFG_NANOBOOT_SIZE) {
-        panic("config error on line %d: \"ramfsaddr\" is within nanoboot's "
-              "reserved memory", lineno);
+        panic("config error on line %d: \"initramfs_address\" is within "
+              "nanoboot's reserved memory", lineno);
     }
 
-    config.ramfsaddr = addr;
-}
-
-static void ramfsfile_set(char *s, int lineno)
-{
-    strncpy(config.ramfsfile, s, sizeof(config.ramfsfile));
-    config.ramfsfile[sizeof(config.ramfsfile) - 1] = '\0';
+    config.initramfs_address = addr;
 }
 
 static void mini2451(char *s, int lineno)
@@ -112,11 +112,11 @@ typedef struct {
 } property_t;
 
 static const property_t properties[] = {
-    {"cmdline",        cmdline_set,        cmdline_append},
-    {"kernel",         kernel_set,         NULL          },
-    {"kernel_address", kernel_address_set, NULL          },
-    {"ramfsaddr",      ramfsaddr_set,      NULL          },
-    {"ramfsfile",      ramfsfile_set,      NULL          },
+    {"cmdline",           cmdline_set,           cmdline_append},
+    {"kernel",            kernel_set,            NULL          },
+    {"kernel_address",    kernel_address_set,    NULL          },
+    {"initramfs",         initramfs_set,         NULL          },
+    {"initramfs_address", initramfs_address_set, NULL          },
     {NULL},
 };
 
@@ -241,10 +241,10 @@ void read_configfile(void)
     config.device = DEVICE_NANOPI;
     config.quiet = false;
     strcpy(config.cmdline, CMDLINE_DEFAULT);
-    config.kernel_address = PHYS_SDRAM_1 + 0x8000;
     strcpy(config.kernel, KERNEL_DEFAULT);
-    config.ramfsaddr = PHYS_SDRAM_1 + 0xA00000;
-    strcpy(config.ramfsfile, RAMFSFILE_DEFAULT);
+    config.kernel_address = PHYS_SDRAM_1 + 0x8000;
+    strcpy(config.initramfs, INITRAMFS_DEFAULT);
+    config.initramfs_address = PHYS_SDRAM_1 + 0x3000000;
 
     fr = f_open(&f, "nanoboot.txt", FA_READ);
     if (fr == FR_OK) {

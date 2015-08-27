@@ -71,9 +71,9 @@ void main(void)
 
     load_image(config.kernel, exec_at);
 
-    if (strlen(config.ramfsfile)) {
-        void *ramfs_at = (void *)config.ramfsaddr;
-        config.ramfssize = load_image(config.ramfsfile, ramfs_at);
+    if (strlen(config.initramfs)) {
+        void *initramfs_at = (void *)config.initramfs_address;
+        config.initramfs_size = load_image(config.initramfs, initramfs_at);
     }
 
     setup_atags(parm_at);

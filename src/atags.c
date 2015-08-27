@@ -99,8 +99,8 @@ void setup_atags(void *parameters)
     if (config.device == DEVICE_MINI2451) {
         setup_mem_atag(PHYS_SDRAM_2, PHYS_SDRAM_2_SIZE);
     }
-    if (strlen(config.ramfsfile)) {
-        setup_initrd2_atag(config.ramfsaddr, config.ramfssize);
+    if (strlen(config.initramfs)) {
+        setup_initrd2_atag(config.initramfs_address, config.initramfs_size);
     }
     setup_cmdline_atag(config.cmdline);
     setup_end_atag();

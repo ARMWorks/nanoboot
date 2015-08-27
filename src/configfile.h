@@ -33,9 +33,9 @@ typedef struct {
     char cmdline[1024];
     TCHAR kernel[256];
     unsigned int kernel_address;
-    unsigned int ramfsaddr;
-    TCHAR ramfsfile[256];
-    size_t ramfssize;
+    TCHAR initramfs[256];
+    unsigned int initramfs_address;
+    size_t initramfs_size;
 } config_t;
 
 extern config_t config;
