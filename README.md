@@ -11,11 +11,11 @@ You'll also want to make sure your toolchain is in your `PATH`.  Then just run
 
 Installation is simple, just use the fuse script:
 
-  `sudo ./fuse.sh /dev/sdX`
+  `./fuse.sh /dev/sdX`
 
-where sdX is the device your sd card is on.  It should detect if your card is
-SD or SDHC automatically.  If it does not, please create an issue so we can
-fix it.
+where /dev/sdX is the device your sd card is on.  It will automatically detect
+if your card is SD or SDHC automatically.  If you have a 4GB non-SDHC card,
+you'll need to pass a 2nd argument, `sd` to the script.
 
 ## nanoboot.txt
 
@@ -34,6 +34,6 @@ filesystem, which has a simple syntax allowing you to set various boot options:
 * `kernel_address = ...` - set the kernel load address
   * default is `0x30008000`
 * `initramfs = ...` - set the initramfs file
-  * default is blank, meaning no initrd
+  * default is blank, meaning no initramfs
 * `initramfs_address = ...` - set the initramfs load address
   * default is `0x33000000`
