@@ -22,7 +22,7 @@ SIZE    := $(CROSS_COMPILE)size
 
 TARGET  := nanoboot.bin
 
-BL1_AFILES := $(wildcard src/bl1/*.S)
+BL1_AFILES := src/bl1/start.S src/bl1/lowlevel_init.S
 BL1_CFILES := $(wildcard src/bl1/*.c)
 BL1_OFILES := $(BL1_AFILES:src/bl1/%.S=build/bl1/%.o) $(BL1_CFILES:src/bl1/%.c=build/bl1/%.o)
 
@@ -37,7 +37,7 @@ endif
 
 CFLAGS += -g3 -Wall -Wno-unused-function -std=gnu99 -ffreestanding -fdata-sections -ffunction-sections -nostdinc -D__KERNEL__
 CFLAGS += -mlittle-endian -msoft-float -mtune=arm926ej-s
-ASFLAGS := -Wa,--defsym,_entry=0 -D__ASSEMBLY__
+ASFLAGS := -D__ASSEMBLY__
 LDFLAGS := -nostartfiles -nodefaultlibs -nostdlib -static -Wl,--gc-sections
 INCLUDE := -I./src/nanolib/include -I./include -I./src
 
