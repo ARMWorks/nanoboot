@@ -1,6 +1,10 @@
 # nanoboot
 A bootloader for the FriendlyARM NanoPi (and Mini2451 in SD boot mode)
 
+[Source Repo](https://github.com/ARMWorks/NanoPi-nanoboot)
+
+[Releases](https://github.com/ARMWorks/NanoPi-nanoboot/releases)
+
 This bootloader supports booting a kernel with an optional initrd from the FAT
 partition of a SD/MicroSD card.  Device tree support is in the planning stages.
 
