@@ -157,7 +157,7 @@ build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	$(Q)$(OBJCOPY) -Obinary $< $@
 	$(Q)../tools/header.py $@
 
-$(LDSCRIPT): ${BINARY}.ld
+$(LDSCRIPT): ../common/${BINARY}.ld
 	@echo "  CPP     $<"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CPP) $(TGT_CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) $< -o $@
