@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "dwc2_udc_otg_regs.h": "c",
+        "dwc2_udc_otg_priv.h": "c",
+        "gadget.h": "c",
+        "bug.h": "c",
+        "delay.h": "c",
+        "cstdio": "cpp",
+        "s5pv210.h": "c",
+        "stdio.h": "c",
+        "irq.h": "c"
+    }
+}
