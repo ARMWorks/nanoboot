@@ -21,7 +21,7 @@
 entry:
 	bl blink
 
-	.space 512
+	.space 16384
 
 blink:
 	/* set LED GPIOs as output */
