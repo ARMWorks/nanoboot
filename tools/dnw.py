@@ -15,6 +15,7 @@ if __name__ == '__main__':
     if dev is None:
         raise ValueError('Device not found')
 
+    dev.set_configuration()
     cfg = dev.get_active_configuration()
     intf = cfg[(0, 0)]
 

@@ -265,9 +265,6 @@ static inline void set_config(udc_t *udc, int config)
     udc->ep[1].addr = desc1->bEndpointAddress;
     udc->ep[2].addr = desc2->bEndpointAddress;
 
-    udc->ops->ep_disable(&udc->ep[1]);
-    udc->ops->ep_disable(&udc->ep[2]);
-
     if (config) {
         udc->ops->ep_enable(&udc->ep[1], desc1);
         udc->ops->ep_enable(&udc->ep[2], desc2);
@@ -293,13 +290,14 @@ static void complete(udc_ep_t *ep, udc_req_t *req)
 
     if (priv->offset >= priv->length) {
         udc->ops->free_req(ep, req);
+        udc->ops->ep_disable(&udc->ep[1]);
+        udc->ops->ep_disable(&udc->ep[2]);
         ((void (*)(void))priv->address)();
     }
 
     priv->chunk_num++;
     req->actual = 0;
     udc->ops->queue(&udc->ep[2], req);
-    udc->ops->ep_enable(&udc->ep[2], &sec_dths_config.ep2);
 }
 
 static void configured(udc_t *udc)
@@ -312,7 +310,6 @@ static void configured(udc_t *udc)
         req->length = sizeof(priv->chunk);
         req->complete = complete;
         udc->ops->queue(&udc->ep[2], req);
-        udc->ops->ep_enable(&udc->ep[2], &sec_dths_config.ep2);
     }
 }
 
