@@ -55,27 +55,28 @@ LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
 ###############################################################################
 # Source files
 
-VPATH			:= ../common ../gadget
+VPATH			:= ../common ../drivers
 
 AS_SRCS			:= src/startup.S
-COMMON_AS_SRCS  :=
-UDC_AS_SRCS    :=
+COMMON_AS_SRCS	:=
+DRIVER_AS_SRCS	:=
 
 C_SRCS			:= $(wildcard src/*.c)
 COMMON_C_SRCS	:= $(wildcard ../common/src/*.c)
-GADGET_C_SRCS	:= $(wildcard ../gadget/src/*.c)
+DRIVER_C_SRCS	:= $(wildcard ../drivers/gadget/src/*.c) \
+				   $(wildcard ../drivers/mtd/src/*.c)
 
 OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
 				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS)) \
 				   $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
 				   $(patsubst ../common/%.c,build/$(PROFILE)/%.o,$(COMMON_C_SRCS)) \
-				   $(patsubst ../gadget/%.S,build/$(PROFILE)/%.o,$(GADGET_AS_SRCS)) \
-				   $(patsubst ../gadget/%.c,build/$(PROFILE)/%.o,$(GADGET_C_SRCS))
+				   $(patsubst ../drivers/%.S,build/$(PROFILE)/%.o,$(DRIVER_AS_SRCS)) \
+				   $(patsubst ../drivers/%.c,build/$(PROFILE)/%.o,$(DRIVER_C_SRCS))
 
 INCLUDES        := -Iinclude \
 				   -I../common/include \
-				   -I../gadget/include \
-				   -I../gadget/arch/arm/include
+				   -I../drivers/gadget/include \
+				   -I../drivers/mtd/include
 
 DEFS			+= $(INCLUDES) -DBL2
 FP_FLAGS		?= -mfloat-abi=soft

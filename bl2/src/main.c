@@ -29,24 +29,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void hd(void *addr, int dwords)
-{
-    int i;
-    uint32_t *p = (uint32_t*)addr;
-
-    for (i = 0; i < dwords; i++) {
-        if ((i % 8) == 0) {
-            if (i != 0) {
-                printf("\n");
-            }
-            printf("%08lx", (uint32_t)(p + i));
-        }
-
-        printf(" %08lx", *(uint32_t *)(p + i));
-    }
-
-    printf("\n");
-}
 
 static void isr_key(uint32_t irq, void *pv)
 {
