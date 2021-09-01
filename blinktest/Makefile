@@ -38,9 +38,9 @@ OBJCOPY			:= $(PREFIX)objcopy
 OBJDUMP			:= $(PREFIX)objdump
 GDB				:= $(PREFIX)gdb
 OPT				:= -Os
-CSTD			?= -std=gnu99
+CSTD			?= -std=gnu11
 
-BINARY          := bl2
+BINARY          := test
 LDFLAGS			:= -specs=nano.specs -specs=nosys.specs
 
 ifeq ($(NDEBUG),1)
@@ -55,30 +55,25 @@ LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
 ###############################################################################
 # Source files
 
-VPATH			:= ../common ../udc
+VPATH			:= ../common
 
-AS_SRCS			:= src/startup.S
 COMMON_AS_SRCS  :=
-DWC2_AS_SRCS    :=
+AS_SRCS			:= src/startup.S
 
-C_SRCS			:= $(wildcard src/*.c)
 COMMON_C_SRCS	:= $(wildcard ../common/src/*.c)
-DWC2_C_SRCS     := $(wildcard ../udc/src/*.c)
+C_SRCS			:= $(wildcard src/*.c)
 
-OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
-				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS)) \
-				   $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
+OBJS			:= $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
 				   $(patsubst ../common/%.c,build/$(PROFILE)/%.o,$(COMMON_C_SRCS)) \
-				   $(patsubst ../udc/%.S,build/$(PROFILE)/%.o,$(DWC2_AS_SRCS)) \
-				   $(patsubst ../udc/%.c,build/$(PROFILE)/%.o,$(DWC2_C_SRCS))
+				   $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
+				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS))
 
 INCLUDES        := -Iinclude \
-				   -I../common/include \
-				   -I../udc/include
+				   -I../common/include
 
-DEFS			+= $(INCLUDES) -DBL2
-FP_FLAGS		?= -mfloat-abi=hard -mfpu=vfpv3-d16-fp16
-ARCH_FLAGS		:= -mthumb -mcpu=cortex-a8 $(FP_FLAGS)
+DEFS			+= $(INCLUDES)
+FP_FLAGS		?= -mfloat-abi=soft
+ARCH_FLAGS		:= -mthumb -mthumb-interwork -mcpu=cortex-a8 $(FP_FLAGS)
 
 ###############################################################################
 # C flags
@@ -155,7 +150,6 @@ build/$(PROFILE)/%.elf: $(OBJS) $(LDSCRIPT)
 build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	@echo "  OBJCOPY $*.bin"
 	$(Q)$(OBJCOPY) -Obinary $< $@
-	$(Q)../tools/header.py $@
 
 $(LDSCRIPT): ../common/${BINARY}.ld
 	@echo "  CPP     $<"
@@ -169,7 +163,7 @@ build/$(PROFILE)/%.o: %.S
 	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 build/$(PROFILE)/%.o: %.c
-	@echo "  CC      $@.c"
+	@echo "  CC      $*.c"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $@ -c $<
 

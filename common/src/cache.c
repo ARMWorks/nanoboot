@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "barriers.h"
+#include "asm/barriers.h"
 #include "system.h"
 
 #include <stdint.h>
@@ -28,6 +28,7 @@ void icache_invalidate(void)
 	asm("mcr p15, 0, %0, c7, c5, 0" :: "r" (sbz));
 }
 
+__attribute__((target("arm")))
 void icache_enable(void)
 {
 	uint32_t reg;
@@ -36,6 +37,7 @@ void icache_enable(void)
 	set_sctlr(reg);
 }
 
+__attribute__((target("arm")))
 void icache_disable(void)
 {
 	uint32_t reg;
@@ -44,12 +46,14 @@ void icache_disable(void)
 	set_sctlr(reg);
 }
 
+__attribute__((target("arm")))
 void dcache_invalidate(void)
 {
 	asm("1:	mrc p15, 0, r15, c7, c14, 3\n\t"
 		"bne 1b" ::: "cc", "r15");
 }
 
+__attribute__((target("arm")))
 void dcache_enable(void)
 {
 	dcache_invalidate();
@@ -60,6 +64,7 @@ void dcache_enable(void)
 	set_sctlr(reg);
 }
 
+__attribute__((target("arm")))
 void dcache_disable(void)
 {
 	dcache_invalidate();
@@ -70,6 +75,7 @@ void dcache_disable(void)
 	set_sctlr(reg);
 }
 
+__attribute__((target("arm")))
 void invalidate_l1(void)
 {
 	asm("mov r0, #0\n"
@@ -103,6 +109,7 @@ void invalidate_l1(void)
 		"isb\n" ::: "r0", "r1", "r2", "r3", "r4", "r5", "r6");
 }
 
+__attribute__((target("arm")))
 void tlb_invalidate(void)
 {
 	/* Invalidate entire unified TLB */

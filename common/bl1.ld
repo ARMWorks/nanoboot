@@ -45,7 +45,8 @@ PROVIDE (NF8_ReadPage_Adv128p_addr = 0xD0037FB0);
 
 SECTIONS
 {
-  .header : {
+  .header :
+  {
     LONG(0);
     LONG(0);
     LONG(0);
@@ -55,6 +56,8 @@ SECTIONS
   .text :
   {
     . = ALIGN(8);
+    */startup.o(.text)
+    */startup.o(.text*)
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */
@@ -94,7 +97,8 @@ SECTIONS
     PROVIDE ( _end = . );
   } >SRAM
 
-	.sdram (NOLOAD) : {
+	.sdram (NOLOAD) :
+  {
     *(.sdram)
 		*(.sdram*)
 	} >SDRAM

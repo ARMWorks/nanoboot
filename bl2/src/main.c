@@ -16,21 +16,39 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "dwc2.h"
-#include "io.h"
+#include "asm/io.h"
+#include "udc.h"
 #include "irq.h"
 #include "mmu.h"
 #include "s5pv210.h"
-#include "sec_gadget.h"
+#include "dnw.h"
 #include "system.h"
 #include "timer.h"
-#include "udc.h"
 #include "uart.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
+static void hd(void *addr, int dwords)
+{
+    int i;
+    uint32_t *p = (uint32_t*)addr;
 
-void isr_key(void)
+    for (i = 0; i < dwords; i++) {
+        if ((i % 8) == 0) {
+            if (i != 0) {
+                printf("\n");
+            }
+            printf("%08lx", (uint32_t)(p + i));
+        }
+
+        printf(" %08lx", *(uint32_t *)(p + i));
+    }
+
+    printf("\n");
+}
+
+static void isr_key(uint32_t irq, void *pv)
 {
     uart0_putc('!');
     writel(readl(ELFIN_GPIO_BASE + EXT_INT_2_PEND) | (1 << 0),
@@ -48,11 +66,11 @@ void main(void)
     writel(readl(ELFIN_GPIO_BASE + EXT_INT_2_MASK) & ~(1 << 0),
             ELFIN_GPIO_BASE + EXT_INT_2_MASK);
 
-    irq_set_handler(IRQ_EINT16_31, isr_key);
+    irq_set_handler(IRQ_EINT16_31, isr_key, NULL);
     irq_enable(IRQ_EINT16_31);
 
-    udc_init(&dwc2_driver);
-    udc_gadget_attach(&sec_gadget);
+    udc_probe();
+    udc_register_gadget(&dnw_gadget);
 
     enable_irqs();
 

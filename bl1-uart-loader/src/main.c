@@ -26,7 +26,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <unistd.h>
 
+
+#define CHUNK_SIZE (1024)
+
+#define MIN(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+       _a < _b ? _a : _b; })
 
 typedef struct bl2_header_t bl2_header_t;
 struct bl2_header_t {
@@ -36,20 +44,16 @@ struct bl2_header_t {
     uint32_t reserved2;
 } __attribute__((__packed__));
 
-
 void main(void)
 {
-    uint8_t *p = (uint8_t *) NANOBOOT_BASE;
-
     uart0_set_baudrate(460800);
-
     puts("BL1 UART Loader READY");
-    fread(p, 16, 1, stdin);
 
-    bl2_header_t *header = (void *) p;
+    bl2_header_t *header = (bl2_header_t *) NANOBOOT_BASE;
+    read(STDIN_FILENO, header, 16);
 
-    p += 16;
-    fread(p, header->size - 16, 1, stdin);
+    uint8_t *p = ((uint8_t *) header) + 16;
+    read(STDIN_FILENO, p, header->size - 16);
 
     uint32_t checksum = 0;
     for (uint32_t i = 0; i < header->size - 16; i++) {
@@ -58,7 +62,7 @@ void main(void)
 
     if (checksum == header->checksum) {
         icache_invalidate();
-        ((void (*)(void))NANOBOOT_BASE + 0x10)();
+        ((void (*)(void))NANOBOOT_BASE + 16)();
     } else {
         puts("bad checksum");
     }

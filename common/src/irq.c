@@ -16,15 +16,17 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "asm/io.h"
 #include "halt.h"
 #include "irq.h"
-#include "io.h"
 #include "s5pv210.h"
 #include "system.h"
 #include "uart.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <strings.h>
 
 
 typedef struct exc_vect_t exc_vect_t;
@@ -53,69 +55,71 @@ static const uint32_t vic_address[] = {
     ELFIN_VIC3_BASE_ADDR + VIC_ADDRESS_OFFSET,
 };
 
-//__attribute__((target("arm")))
+static void *irq_userdata[128] = { };
+
+__attribute__((target("arm")))
 void enable_irqs(void)
 {
-    uint32_t reg;
-    reg = get_cpsr();
-    reg &= ~CPSR_I;
-    set_cpsr(reg);
+    uint32_t reg = get_cpsr();
+    set_cpsr(reg & ~CPSR_I);
 }
 
-//__attribute__((target("arm")))
-void disable_irqs(void)
+__attribute__((target("arm")))
+bool disable_irqs(void)
 {
-    uint32_t reg;
-    reg = get_cpsr();
-    reg |= CPSR_I;
-    set_cpsr(reg);
+    uint32_t reg = get_cpsr();
+    set_cpsr(reg | CPSR_I);
+    return !!(reg & CPSR_I);
 }
 
-__attribute__((interrupt("UNDEF")))
+__attribute__((target("arm"), interrupt("UNDEF")))
 static void exc_undef(void)
 {
     printf("undef\n");
     error_halt();
 }
 
-__attribute__((interrupt("SWI")))
+__attribute__((target("arm"), interrupt("UNDEF")))
 static void exc_swi(void)
 {
     printf("swi\n");
     error_halt();
 }
 
-__attribute__((interrupt("ABORT")))
+__attribute__((target("arm"), interrupt("UNDEF")))
 static void exc_pabort(void)
 {
     printf("pabort\n");
     error_halt();
 }
 
-__attribute__((interrupt("ABORT")))
+__attribute__((target("arm"), interrupt("UNDEF")))
 static void exc_dabort(void)
 {
     printf("dabort\n");
     error_halt();
 }
 
-__attribute__((interrupt("IRQ")))
+__attribute__((target("arm"), interrupt("UNDEF")))
 static void exc_irq(void)
 {
-    void (*isr)(void) = NULL;
+    void (*isr)(uint32_t irq, void *pv) = NULL;
 
-    uint32_t vic = 0;
+    uint32_t vic, irq = 0;
     for (vic = 0; vic < 4; vic++) {
-        if (readl(vic_irqstatus[vic]) != 0) {
+        uint32_t status = readl(vic_irqstatus[vic]);
+        if (status != 0) {
             isr = (void *) readl(vic_address[vic]);
+            irq = (ffs(status) - 1) + (vic * 32);
             break;
         }
     }
-    isr();
+
+    isr(irq, irq_userdata[irq]);
     writel(0x00000000, vic_address[vic]);
 }
 
-__attribute__((interrupt("FIQ")))
+__attribute__((target("arm"), interrupt("UNDEF")))
 static void exc_fiq(void)
 {
     printf("fiq\n");
@@ -156,35 +160,39 @@ void irq_init(void)
     set_sctlr(reg);
 }
 
-void irq_set_handler(uint32_t irq, void *handler)
+void irq_set_handler(uint32_t irq, void *handler, void *pv)
 {
-    if (irq < 32) {
-        writel((uint32_t) handler, ELFIN_VIC0_BASE_ADDR + VIC_VECTADDR_OFFSET(irq));
-    } else if (irq < 64) {
-        irq &= 0x1F;
-        writel((uint32_t) handler, ELFIN_VIC1_BASE_ADDR + VIC_VECTADDR_OFFSET(irq));
-    } else if (irq < 96) {
-        irq &= 0x1F;
-        writel((uint32_t) handler, ELFIN_VIC2_BASE_ADDR + VIC_VECTADDR_OFFSET(irq));
-    } else {
-        irq &= 0x1F;
-        writel((uint32_t) handler, ELFIN_VIC3_BASE_ADDR + VIC_VECTADDR_OFFSET(irq));
+    if (irq >= 128) {
+        return;
     }
+
+    if (irq < 32) {
+        writel((uint32_t) handler, ELFIN_VIC0_BASE_ADDR +
+                VIC_VECTADDR_OFFSET(irq & 0x1F));
+    } else if (irq < 64) {
+        writel((uint32_t) handler, ELFIN_VIC1_BASE_ADDR +
+                VIC_VECTADDR_OFFSET(irq & 0x1F));
+    } else if (irq < 96) {
+        writel((uint32_t) handler, ELFIN_VIC2_BASE_ADDR +
+                VIC_VECTADDR_OFFSET(irq & 0x1F));
+    } else {
+        writel((uint32_t) handler, ELFIN_VIC3_BASE_ADDR +
+                VIC_VECTADDR_OFFSET(irq & 0x1F));
+    }
+
+    irq_userdata[irq] = pv;
 }
 
 void irq_enable(uint32_t irq)
 {
     if (irq < 32) {
-        writel(1 << irq, ELFIN_VIC0_BASE_ADDR + VIC_INTENABLE_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC0_BASE_ADDR + VIC_INTENABLE_OFFSET);
     } else if (irq < 64) {
-        irq &= 0x1F;
-        writel(1 << irq, ELFIN_VIC1_BASE_ADDR + VIC_INTENABLE_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC1_BASE_ADDR + VIC_INTENABLE_OFFSET);
     } else if (irq < 96) {
-        irq &= 0x1F;
-        writel(1 << irq, ELFIN_VIC2_BASE_ADDR + VIC_INTENABLE_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC2_BASE_ADDR + VIC_INTENABLE_OFFSET);
     } else if (irq < 128) {
-        irq &= 0x1F;
-        writel(1 << irq, ELFIN_VIC3_BASE_ADDR + VIC_INTENABLE_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC3_BASE_ADDR + VIC_INTENABLE_OFFSET);
     } else {
         writel(0xFFFFFFFF, ELFIN_VIC0_BASE_ADDR + VIC_INTENABLE_OFFSET);
         writel(0xFFFFFFFF, ELFIN_VIC1_BASE_ADDR + VIC_INTENABLE_OFFSET);
@@ -196,20 +204,36 @@ void irq_enable(uint32_t irq)
 void irq_disable(uint32_t irq)
 {
     if (irq < 32) {
-        writel(1 << irq, ELFIN_VIC0_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC0_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
     } else if (irq < 64) {
-        irq &= 0x1F;
-        writel(1 << irq, ELFIN_VIC1_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC1_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
     } else if (irq < 96) {
-        irq &= 0x1F;
-        writel(1 << irq, ELFIN_VIC2_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC2_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
     } else if (irq < 128) {
-        irq &= 0x1F;
-        writel(1 << irq, ELFIN_VIC3_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
+        writel(1 << (irq & 0x1F), ELFIN_VIC3_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
     } else {
         writel(0xFFFFFFFF, ELFIN_VIC0_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
         writel(0xFFFFFFFF, ELFIN_VIC1_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
         writel(0xFFFFFFFF, ELFIN_VIC2_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
         writel(0xFFFFFFFF, ELFIN_VIC3_BASE_ADDR + VIC_INTENCLEAR_OFFSET);
+    }
+}
+
+bool irq_is_enabled(uint32_t irq)
+{
+    if (irq < 32) {
+        return !!(readl(ELFIN_VIC0_BASE_ADDR + VIC_INTENABLE_OFFSET) &
+            (1 << (irq & 0x1F)));
+    } else if (irq < 64) {
+        return !!(readl(ELFIN_VIC1_BASE_ADDR + VIC_INTENABLE_OFFSET) &
+            (1 << (irq & 0x1F)));
+    } else if (irq < 96) {
+        return !!(readl(ELFIN_VIC2_BASE_ADDR + VIC_INTENABLE_OFFSET) &
+            (1 << (irq & 0x1F)));
+    } else if (irq < 128) {
+        return !!(readl(ELFIN_VIC3_BASE_ADDR + VIC_INTENABLE_OFFSET) &
+            (1 << (irq & 0x1F)));
+    } else {
+        return false;
     }
 }

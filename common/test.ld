@@ -18,25 +18,17 @@
 
 #include "config.h"
 
-ENTRY(bl2_startup)
+ENTRY(entry)
 
 MEMORY
 {
   ROM (xr)      : ORIGIN = 0x00000000, LENGTH = 64K
   SRAM (xrw)    : ORIGIN = 0xD0020000, LENGTH = 96K
-  SDRAM (xrw)   : ORIGIN = NANOBOOT_BASE, LENGTH = NANOBOOT_SIZE
+  SDRAM (xrw)   : ORIGIN = 0x20000000, LENGTH = 1536M
 }
 
 SECTIONS
 {
-  .header :
-  {
-    LONG(0);
-    LONG(0);
-    LONG(0);
-    LONG(0);
-  } >SDRAM
-
   .text :
   {
     . = ALIGN(8);

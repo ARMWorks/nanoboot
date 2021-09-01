@@ -18,14 +18,16 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 
-void disable_irqs(void);
+bool disable_irqs(void);
 void enable_irqs(void);
 
 void irq_handler(void);
 void irq_init(void);
-void irq_set_handler(uint32_t irq, void *handler);
+void irq_set_handler(uint32_t irq, void *handler, void *pv);
 void irq_enable(uint32_t irq);
 void irq_disable(uint32_t irq);
+bool irq_is_enabled(uint32_t irq);

@@ -61,7 +61,6 @@ void mmu_disable(void)
     set_sctlr(reg);
 }
 
-__attribute__((target("arm")))
 uint32_t mmu_init(void)
 {
 	main_tlb = memalign(16384, 16384);

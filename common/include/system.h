@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "barriers.h"
+#include "asm/barriers.h"
 
 #include <stdint.h>
 

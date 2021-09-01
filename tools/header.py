@@ -25,13 +25,13 @@ MIN_IMAGE_SIZE = (16 * 1024)
 if __name__ == '__main__':
     path = sys.argv[1]
 
-    with open(path, 'ab') as f:
+    with open(path, 'rb+') as f:
+        f.seek(0, os.SEEK_END)
         size = f.tell()
-        if size <= MIN_IMAGE_SIZE:
+        if size < MIN_IMAGE_SIZE:
             f.write(b'\xFF' * (MIN_IMAGE_SIZE - size))
             size = MIN_IMAGE_SIZE
 
-    with open(path, 'rb+') as f:
         f.seek(16, os.SEEK_SET)
         checksum = 0
         byte = f.read(1)

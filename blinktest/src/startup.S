@@ -16,8 +16,29 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#pragma once
+.arm
+.globl entry
+entry:
+	bl blink
 
-#include "udc.h"
+	.space 512
 
-extern udc_gadget_t sec_gadget;
+blink:
+	/* set LED GPIOs as output */
+	ldr r2, =0xE0200280
+	ldr r1, =0x00001111
+	str r1, [r2]
+	ldr r2, =0xE0200284
+	ldr r1, =0xA
+1:
+	/* flash LEDs */
+	str r1, [r2]
+	mov r0, #0x1000000
+2:
+	cmp r0, #0
+	sub r0, r0, #1
+	bne 2b
+	eor r1, r1, #0xF
+	b 1b
+
+.ltorg

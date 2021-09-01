@@ -26,3 +26,13 @@ uint32_t timer_get(uint32_t base);
 uint32_t timer_get_us_down(void);
 uint32_t timer_get_us(void);
 void udelay(uint32_t us);
+
+static inline void mdelay(uint32_t ms)
+{
+    udelay(1000 * ms);
+}
+
+static inline void ndelay(unsigned long ns)
+{
+    udelay((ns + 999) / 1000);
+}

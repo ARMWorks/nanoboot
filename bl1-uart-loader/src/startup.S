@@ -35,10 +35,6 @@ bl1_startup:
 	ldr	sp, =0xD0037D80 /* SRAM SVC stack */
     mov fp, #0 /* no previous frame, so fp=0 */
 
-	bl clock_init
-	bl sdram_init
-	bl uart0_init
-
 clear_bss:
 	ldr r0, =_sbss
 	ldr r1, =_ebss
@@ -50,6 +46,10 @@ clear_bss:
 	cmp r0, r1
 	ble 1b
 2:
+
+	bl clock_init
+	bl uart0_init
+	bl sdram_init
 
 	ldr r0, =main
 	blx r0

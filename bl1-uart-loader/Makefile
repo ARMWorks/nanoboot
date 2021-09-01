@@ -38,7 +38,7 @@ OBJCOPY			:= $(PREFIX)objcopy
 OBJDUMP			:= $(PREFIX)objdump
 GDB				:= $(PREFIX)gdb
 OPT				:= -Os
-CSTD			?= -std=gnu99
+CSTD			?= -std=gnu11
 
 BINARY          := bl1
 LDFLAGS			:= -specs=nano.specs -specs=nosys.specs
@@ -72,8 +72,8 @@ INCLUDES        := -Iinclude \
 				   -I../common/include
 
 DEFS			+= $(INCLUDES) -DBL1
-FP_FLAGS		?= -mfloat-abi=hard -mfpu=vfpv3-d16-fp16
-ARCH_FLAGS		:= -mthumb -mcpu=cortex-a8 $(FP_FLAGS)
+FP_FLAGS		?= -mfloat-abi=soft
+ARCH_FLAGS		:= -mcpu=cortex-a8 $(FP_FLAGS)
 
 ###############################################################################
 # C flags

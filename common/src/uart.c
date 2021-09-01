@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "io.h"
+#include "asm/io.h"
 #include "s5pv210.h"
 #include "uart.h"
 

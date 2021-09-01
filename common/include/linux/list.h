@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-/*
- * This is a derivative work of include/linux/list.h from the
- * Linux 5.12-rc6 kernel source.
- */
+
 #pragma once
+
+#include <macros.h>
 
 #include <stdbool.h>
 #include <stddef.h>

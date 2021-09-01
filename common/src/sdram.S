@@ -72,8 +72,7 @@ sdram_init:
 	ldr	r1, =0x00101003
 	str	r1, [r0, #DMC_PHYCONTROL0]
 
-	/* Wait for DLL lock */
-1:
+1:	/* Wait for DLL lock */
 	ldr	r1, [r0, #DMC_PHYSTATUS]
 	and	r2, r1, #0x7
 	cmp	r2, #0x7

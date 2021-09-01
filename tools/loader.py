@@ -438,13 +438,20 @@ class Monitor(object):
                 p.wait()
             self.output_enable(True)
 
+    def do_load(self, path):
+        if not os.path.exists(path):
+            return
+        time.sleep(0.05)
+        with open(path, 'rb') as f:
+            data = f.read()
+            while data:
+                chunk, data = data[:1024], data[1024:]
+                self.serial.write(chunk)
+
     def check_loader_trigger_before_print(self, line):
         if LOADER_UART_READY in line:
             self.run_make()
-            if os.path.exists('build/debug/bl2.bin'):
-                time.sleep(0.05)
-                with open('build/debug/bl2.bin', 'rb') as f:
-                    self.serial.write(f.read())
+            self.do_load('build/debug/bl2.bin')
             self._hide_bl1_text = True
 
     def output_enable(self, enable):

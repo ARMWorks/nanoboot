@@ -34,19 +34,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#pragma once
 
-#include "io.h"
+#ifndef __DWC2_HW_H__
+#define __DWC2_HW_H__
 
-#include <stdint.h>
+#include <linux/bitops.h>
+#include <linux/types.h>
 
 
-#define HSOTG_REG(x)	(0xEC000000 + x)
+#define CLKPWR_REG(x)           (0xE0100000 + x)
+#define HSOTG_REG(x)			(0xEC000000 + x)
+#define HSPHY_REG(x)	        (0xEC100000 + x)
 
 #define GOTGCTL				HSOTG_REG(0x000)
 #define GOTGCTL_CHIRPEN			BIT(27)
 #define GOTGCTL_MULT_VALID_BC_MASK	(0x1f << 22)
 #define GOTGCTL_MULT_VALID_BC_SHIFT	22
+#define GOTGCTL_CURMODE_HOST		BIT(21)
 #define GOTGCTL_OTGVER			BIT(20)
 #define GOTGCTL_BSESVLD			BIT(19)
 #define GOTGCTL_ASESVLD			BIT(18)
@@ -569,6 +573,7 @@
 #define DXEPCTL_STALL			BIT(21)
 #define DXEPCTL_SNP			BIT(20)
 #define DXEPCTL_EPTYPE_MASK		(0x3 << 18)
+#define DXEPCTL_EPTYPE_SHIFT		18
 #define DXEPCTL_EPTYPE_CONTROL		(0x0 << 18)
 #define DXEPCTL_EPTYPE_ISO		(0x1 << 18)
 #define DXEPCTL_EPTYPE_BULK		(0x2 << 18)
@@ -628,6 +633,8 @@
 #define DOEPTSIZ0_PKTCNT		BIT(19)
 #define DOEPTSIZ0_XFERSIZE_MASK		(0x7f << 0)
 #define DOEPTSIZ0_XFERSIZE_SHIFT	0
+#define DOEPTSIZ0_XFERSIZE_LIMIT	0x7f
+#define DOEPTSIZ0_XFERSIZE(_x)		((_x) << 0)
 
 #define DIEPTSIZ(_a)			HSOTG_REG(0x910 + ((_a) * 0x20))
 #define DOEPTSIZ(_a)			HSOTG_REG(0xB10 + ((_a) * 0x20))
@@ -844,9 +851,9 @@
  * Status quadlet and Data buffer pointer.
  */
 struct dwc2_dma_desc {
-	uint32_t status;
-	uint32_t buf;
-} __attribute__((packed));
+	__u32 status;
+	__u32 buf;
+} __attribute__ ((packed));
 
 /* Host Mode DMA descriptor status quadlet */
 
@@ -903,3 +910,48 @@ struct dwc2_dma_desc {
 
 #define MAX_DMA_DESC_NUM_GENERIC	64
 #define MAX_DMA_DESC_NUM_HS_ISOC	256
+
+/* PHY power control */
+#define UPHYPWR			HSPHY_REG(0x0)
+
+#define UPHYPWR_PHY0_SUSPEND	BIT(0)
+#define UPHYPWR_PHY0_PWR	BIT(3)
+#define UPHYPWR_PHY0_OTG_PWR	BIT(4)
+#define UPHYPWR_PHY0	( \
+	UPHYPWR_PHY0_SUSPEND | \
+	UPHYPWR_PHY0_PWR | \
+	UPHYPWR_PHY0_OTG_PWR)
+
+#define UPHYPWR_PHY1_SUSPEND	BIT(6)
+#define UPHYPWR_PHY1_PWR	BIT(7)
+#define UPHYPWR_PHY1 ( \
+	UPHYPWR_PHY1_SUSPEND | \
+	UPHYPWR_PHY1_PWR)
+
+/* PHY clock control */
+#define UPHYCLK			HSPHY_REG(0x4)
+
+#define UPHYCLK_PHYFSEL_MASK	(0x3 << 0)
+#define UPHYCLK_PHYFSEL_48MHZ	(0x0 << 0)
+#define UPHYCLK_PHYFSEL_24MHZ	(0x3 << 0)
+#define UPHYCLK_PHYFSEL_12MHZ	(0x2 << 0)
+
+#define UPHYCLK_PHY0_ID_PULLUP	BIT(2)
+#define UPHYCLK_PHY0_COMMON_ON	BIT(4)
+#define UPHYCLK_PHY1_COMMON_ON	BIT(7)
+
+/* PHY reset control */
+#define UPHYRST			HSPHY_REG(0x8)
+
+#define URSTCON_PHY0		BIT(0)
+#define URSTCON_OTG_HLINK	BIT(1)
+#define URSTCON_OTG_PHYLINK	BIT(2)
+#define URSTCON_PHY1_ALL	BIT(3)
+#define URSTCON_HOST_LINK_ALL	BIT(4)
+
+/* Isolation, configured in the power management unit */
+#define USB_ISOL		CLKPWR_REG(0xe80c)
+#define USB_ISOL_DEVICE		BIT(0)
+#define USB_ISOL_HOST		BIT(1)
+
+#endif /* __DWC2_HW_H__ */
