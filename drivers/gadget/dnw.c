@@ -1,6 +1,25 @@
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
+/*
+ * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; version 2.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
 #include "dnw.h"
 #include "udc.h"
 
+#include <cache.h>
 #include <macros.h>
 
 #include <linux/errno.h>
@@ -12,11 +31,11 @@
 
 
 #define CHUNK_MAX_SIZE (16 * 1024)
+#define NUM_ENDPOINTS (2)
 #define NUM_STRING_DESC (3)
 #define NUM_CONFIG_DESC (1)
 
 typedef struct gadget_priv gadget_priv_t;
-
 struct gadget_priv {
     uint8_t chunk[CHUNK_MAX_SIZE];
     uint16_t config;
@@ -37,8 +56,7 @@ static void configured(udc_t *udc);
 struct usb_device_config_descriptor {
     struct usb_config_descriptor cfg;
     struct usb_interface_descriptor if0;
-    struct usb_endpoint_descriptor ep1;
-    struct usb_endpoint_descriptor ep2;
+    struct usb_endpoint_descriptor ep[];
 } __attribute__((packed));
 
 static const struct usb_device_descriptor sec_dths_dev;
@@ -251,23 +269,24 @@ static inline int process_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl)
 static inline void set_config(udc_t *udc, int config)
 {
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
-    struct usb_endpoint_descriptor *desc1, *desc2;
+    struct usb_endpoint_descriptor *desc[NUM_ENDPOINTS];
 
     priv->config = config;
-    if (udc->speed == USB_SPEED_HIGH) {
-        desc1 = &sec_dths_config.ep1;
-        desc2 = &sec_dths_config.ep2;
-    } else {
-        desc1 = &sec_dtfs_config.ep1;
-        desc2 = &sec_dtfs_config.ep2;
-    }
 
-    udc->ep[1].addr = desc1->bEndpointAddress;
-    udc->ep[2].addr = desc2->bEndpointAddress;
-
-    if (config) {
-        udc->ops->ep_enable(&udc->ep[1], desc1);
-        udc->ops->ep_enable(&udc->ep[2], desc2);
+    if (config == 0) {
+        for (int i = 0; i < NUM_ENDPOINTS; i++) {
+            udc->ops->ep_disable(&udc->ep[i]);
+        }
+    } else if (config == 1) {
+        for (int i = 0; i < NUM_ENDPOINTS; i++) {
+            if (udc->speed == USB_SPEED_HIGH) {
+                desc[i] = &sec_dths_config.ep[i];
+            } else {
+                desc[i] = &sec_dtfs_config.ep[i];
+            }
+            udc->ep[i + 1].addr = desc[i]->bEndpointAddress;
+            udc->ops->ep_enable(&udc->ep[1 + 1], desc[i]);
+        }
         configured(udc);
     }
 }
@@ -292,6 +311,8 @@ static void complete(udc_ep_t *ep, udc_req_t *req)
         udc->ops->free_req(ep, req);
         udc->ops->ep_disable(&udc->ep[1]);
         udc->ops->ep_disable(&udc->ep[2]);
+
+        icache_invalidate();
         ((void (*)(void))priv->address)();
     }
 
@@ -317,7 +338,7 @@ static void configured(udc_t *udc)
 #define PRODUCT_STRING u"Nanoboot bootloader"
 
 /* High speed descriptors */
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_device_descriptor sec_dths_dev = {
     .bLength            = USB_DT_DEVICE_SIZE,
     .bDescriptorType    = USB_DT_DEVICE,
@@ -330,7 +351,7 @@ static const struct usb_device_descriptor sec_dths_dev = {
     .bNumConfigurations = NUM_CONFIG_DESC,
 };
 
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_qualifier_descriptor sec_dths_qual = {
     .bLength            = USB_DT_DEVICE_QUALIFIER_SIZE,
     .bDescriptorType    = USB_DT_DEVICE_QUALIFIER,
@@ -339,7 +360,7 @@ static const struct usb_qualifier_descriptor sec_dths_qual = {
     .bNumConfigurations = 1,
 };
 
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static struct usb_device_config_descriptor sec_dths_config = {
     .cfg = {
         .bLength             = USB_DT_CONFIG_SIZE,
@@ -359,24 +380,26 @@ static struct usb_device_config_descriptor sec_dths_config = {
         .bNumEndpoints       = 2,
         .bInterfaceClass     = 255,
     },
-    .ep1 = {
-        .bLength             = USB_DT_ENDPOINT_SIZE,
-        .bDescriptorType     = USB_DT_ENDPOINT,
-        .bEndpointAddress    = 1 | USB_DIR_IN,
-        .bmAttributes        = USB_ENDPOINT_XFER_BULK,
-        .wMaxPacketSize      = 512,
-    },
-    .ep2 = {
-        .bLength             = USB_DT_ENDPOINT_SIZE,
-        .bDescriptorType     = USB_DT_ENDPOINT,
-        .bEndpointAddress    = 2 | USB_DIR_OUT,
-        .bmAttributes        = USB_ENDPOINT_XFER_BULK,
-        .wMaxPacketSize      = 512,
+    {
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 1 | USB_DIR_IN,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 512,
+        },
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 2 | USB_DIR_OUT,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 512,
+        },
     },
 };
 
 /* Full speed descriptors */
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_device_descriptor sec_dtfs_dev = {
     .bLength            = USB_DT_DEVICE_SIZE,
     .bDescriptorType    = USB_DT_DEVICE,
@@ -389,7 +412,7 @@ static const struct usb_device_descriptor sec_dtfs_dev = {
     .bNumConfigurations = NUM_CONFIG_DESC,
 };
 
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_qualifier_descriptor sec_dtfs_qual = {
     .bLength            = USB_DT_DEVICE_QUALIFIER_SIZE,
     .bDescriptorType    = USB_DT_DEVICE_QUALIFIER,
@@ -398,7 +421,7 @@ static const struct usb_qualifier_descriptor sec_dtfs_qual = {
     .bNumConfigurations = 1,
 };
 
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static struct usb_device_config_descriptor sec_dtfs_config = {
     .cfg = {
         .bLength             = USB_DT_CONFIG_SIZE,
@@ -416,38 +439,40 @@ static struct usb_device_config_descriptor sec_dtfs_config = {
         .bInterfaceNumber    = 0,
         .bNumEndpoints       = 2,
     },
-    .ep1 = {
-        .bLength             = USB_DT_ENDPOINT_SIZE,
-        .bDescriptorType     = USB_DT_ENDPOINT,
-        .bEndpointAddress    = 1 | USB_DIR_IN,
-        .bmAttributes        = USB_ENDPOINT_XFER_BULK,
-        .wMaxPacketSize      = 64,
-    },
-    .ep2 = {
-        .bLength             = USB_DT_ENDPOINT_SIZE,
-        .bDescriptorType     = USB_DT_ENDPOINT,
-        .bEndpointAddress    = 2 | USB_DIR_OUT,
-        .bmAttributes        = USB_ENDPOINT_XFER_BULK,
-        .wMaxPacketSize      = 64,
+    {
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 1 | USB_DIR_IN,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 64,
+        },
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 2 | USB_DIR_OUT,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 64,
+        },
     },
 };
 
 /* String descriptors */
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_string_descriptor str0_descriptor = {
     .bLength         = 2 + 1*2,
     .bDescriptorType = USB_DT_STRING,
     .wData           = { 0x0409 },
 };
 
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_string_descriptor str1_descriptor = {
     .bLength         = 2 + (sizeof(MANUFACTURER_STRING) - 2),
     .bDescriptorType = USB_DT_STRING,
     .wData           = { MANUFACTURER_STRING },
 };
 
-__attribute__((aligned(2)))
+__attribute__((aligned(4)))
 static const struct usb_string_descriptor str2_descriptor = {
     .bLength         = 2 + (sizeof(PRODUCT_STRING) - 2),
     .bDescriptorType = USB_DT_STRING,

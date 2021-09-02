@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 #
 # Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
 #
@@ -58,14 +58,11 @@ LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
 VPATH			:= ../common
 
 COMMON_AS_SRCS  :=
-AS_SRCS			:= src/startup.S
+AS_SRCS			:= startup.S
 
-COMMON_C_SRCS	:= $(wildcard ../common/src/*.c)
-C_SRCS			:= $(wildcard src/*.c)
+C_SRCS			:= $(wildcard *.c)
 
-OBJS			:= $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
-				   $(patsubst ../common/%.c,build/$(PROFILE)/%.o,$(COMMON_C_SRCS)) \
-				   $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
+OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
 				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS))
 
 INCLUDES        := -Iinclude \
@@ -151,8 +148,8 @@ build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	@echo "  OBJCOPY $*.bin"
 	$(Q)$(OBJCOPY) -Obinary $< $@
 
-$(LDSCRIPT): ../common/${BINARY}.ld
-	@echo "  CPP     $<"
+$(LDSCRIPT): ${BINARY}.ld
+	@echo "  CPP     ${BINARY}.ld"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CPP) $(TGT_CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) $< -o $@
 	$(Q)sed -i '/^#/d' $@

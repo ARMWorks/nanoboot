@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -16,17 +16,16 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <strings.h>
+
 #include "asm/io.h"
 #include "halt.h"
 #include "irq.h"
 #include "s5pv210.h"
 #include "system.h"
 #include "uart.h"
-
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <strings.h>
 
 
 typedef struct exc_vect_t exc_vect_t;
@@ -57,14 +56,12 @@ static const uint32_t vic_address[] = {
 
 static void *irq_userdata[128] = { };
 
-__attribute__((target("arm")))
 void enable_irqs(void)
 {
     uint32_t reg = get_cpsr();
     set_cpsr(reg & ~CPSR_I);
 }
 
-__attribute__((target("arm")))
 bool disable_irqs(void)
 {
     uint32_t reg = get_cpsr();
@@ -72,35 +69,35 @@ bool disable_irqs(void)
     return !!(reg & CPSR_I);
 }
 
-__attribute__((target("arm"), interrupt("UNDEF")))
+__attribute__((target("arm"), isr("UNDEF")))
 static void exc_undef(void)
 {
-    printf("undef\n");
+    uart0_puts("undef");
     error_halt();
 }
 
-__attribute__((target("arm"), interrupt("UNDEF")))
+__attribute__((target("arm"), isr("SWI")))
 static void exc_swi(void)
 {
-    printf("swi\n");
+    uart0_puts("swi");
     error_halt();
 }
 
-__attribute__((target("arm"), interrupt("UNDEF")))
+__attribute__((target("arm"), isr("ABORT")))
 static void exc_pabort(void)
 {
-    printf("pabort\n");
+    uart0_puts("pabort");
     error_halt();
 }
 
-__attribute__((target("arm"), interrupt("UNDEF")))
+__attribute__((target("arm"), isr("ABORT")))
 static void exc_dabort(void)
 {
-    printf("dabort\n");
+    uart0_puts("dabort");
     error_halt();
 }
 
-__attribute__((target("arm"), interrupt("UNDEF")))
+__attribute__((target("arm"), isr("IRQ")))
 static void exc_irq(void)
 {
     void (*isr)(uint32_t irq, void *pv) = NULL;
@@ -119,16 +116,18 @@ static void exc_irq(void)
     writel(0x00000000, vic_address[vic]);
 }
 
-__attribute__((target("arm"), interrupt("UNDEF")))
+__attribute__((target("arm"), isr("FIQ")))
 static void exc_fiq(void)
 {
-    printf("fiq\n");
+    uart0_puts("fiq");
     error_halt();
 }
 
 void irq_init(void)
 {
+    disable_irqs();
     irq_disable(IRQ_ALL);
+
     writel(0x00000000, ELFIN_VIC0_BASE_ADDR + VIC_INTSELECT_OFFSET);
     writel(0x00000000, ELFIN_VIC1_BASE_ADDR + VIC_INTSELECT_OFFSET);
     writel(0x00000000, ELFIN_VIC2_BASE_ADDR + VIC_INTSELECT_OFFSET);
@@ -153,11 +152,13 @@ void irq_init(void)
     address->irq = exc_irq;
     address->fiq = exc_fiq;
 
-    /* Set high interrupts */
+    /* Set high isrs */
     uint32_t reg;
     reg = get_sctlr();
     reg |= SCTLR_V;
     set_sctlr(reg);
+
+    enable_irqs();
 }
 
 void irq_set_handler(uint32_t irq, void *handler, void *pv)

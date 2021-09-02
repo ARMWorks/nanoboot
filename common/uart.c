@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -70,4 +70,13 @@ int uart0_putc(int c)
 	while (!(readl(uart_base + UTRSTAT_OFFSET) & UTRSTAT_TX_EMPTY));
 	writel((char) c, uart_base + UTXH_OFFSET);
     return c;
+}
+
+int uart0_puts(const char *s)
+{
+	while (*s) {
+		uart0_putc(*s++);
+	}
+	uart0_putc('\n');
+	return 0;
 }

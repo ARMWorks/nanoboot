@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 #
 # Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
 #
@@ -57,14 +57,13 @@ LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
 
 VPATH			:= ../common ../drivers
 
-AS_SRCS			:= src/startup.S
+AS_SRCS			:= startup.S
 COMMON_AS_SRCS	:=
 DRIVER_AS_SRCS	:=
 
-C_SRCS			:= $(wildcard src/*.c)
-COMMON_C_SRCS	:= $(wildcard ../common/src/*.c)
-DRIVER_C_SRCS	:= $(wildcard ../drivers/gadget/src/*.c) \
-				   $(wildcard ../drivers/mtd/src/*.c)
+C_SRCS			:= $(wildcard *.c)
+COMMON_C_SRCS	:= $(wildcard ../common/*.c)
+DRIVER_C_SRCS	:= $(wildcard ../drivers/gadget/*.c)
 
 OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
 				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS)) \
@@ -75,8 +74,7 @@ OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
 
 INCLUDES        := -Iinclude \
 				   -I../common/include \
-				   -I../drivers/gadget/include \
-				   -I../drivers/mtd/include
+				   -I../drivers/gadget/include
 
 DEFS			+= $(INCLUDES) -DBL2
 FP_FLAGS		?= -mfloat-abi=soft
@@ -157,11 +155,9 @@ build/$(PROFILE)/%.elf: $(OBJS) $(LDSCRIPT)
 build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	@echo "  OBJCOPY $*.bin"
 	$(Q)$(OBJCOPY) -Obinary $< $@
-	$(Q)cp $@ $@.bak
-	$(Q)../tools/header.py $@
 
-$(LDSCRIPT): ../common/${BINARY}.ld
-	@echo "  CPP     $<"
+$(LDSCRIPT): ${BINARY}.ld
+	@echo "  CPP     ${BINARY}.ld"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CPP) $(TGT_CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) $< -o $@
 	$(Q)sed -i '/^#/d' $@
@@ -172,7 +168,7 @@ build/$(PROFILE)/%.o: %.S
 	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 build/$(PROFILE)/%.o: %.c
-	@echo "  CC      $@.c"
+	@echo "  CC      $*.c"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $@ -c $<
 

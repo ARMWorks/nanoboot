@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -16,29 +16,26 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-.arm
-.globl entry
-entry:
-	bl blink
+#include "dwc2_hw.h"
 
-	.space 16384
+#include <timer.h>
 
-blink:
-	/* set LED GPIOs as output */
-	ldr r2, =0xE0200280
-	ldr r1, =0x00001111
-	str r1, [r2]
-	ldr r2, =0xE0200284
-	ldr r1, =0xA
-1:
-	/* flash LEDs */
-	str r1, [r2]
-	mov r0, #0x1000000
-2:
-	cmp r0, #0
-	sub r0, r0, #1
-	bne 2b
-	eor r1, r1, #0xF
-	b 1b
+#include <asm/io.h>
 
-.ltorg
+
+void dwc2_phy_on(void)
+{
+    writel(readl(USB_ISOL) | USB_ISOL_DEVICE, USB_ISOL);
+    writel(UPHYCLK_PHYFSEL_24MHZ, UPHYCLK);
+    writel(readl(UPHYPWR) & ~UPHYPWR_PHY0, UPHYPWR);
+    writel(readl(UPHYRST) | URSTCON_PHY0, UPHYRST);
+    udelay(10);
+    writel(readl(UPHYRST) & ~URSTCON_PHY0, UPHYRST);
+    udelay(80);
+}
+
+void dwc2_phy_off(void)
+{
+    writel(readl(UPHYPWR) | UPHYPWR_PHY0, UPHYPWR);
+    writel(readl(USB_ISOL) & ~USB_ISOL_DEVICE, USB_ISOL);
+}

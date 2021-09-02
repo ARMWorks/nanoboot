@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -65,4 +65,17 @@ static inline void set_sctlr(uint32_t reg)
 {
     asm volatile("mcr p15, 0, %0, c1, c0, 0" :: "r" (reg) : "cc");
 	isb();
+}
+
+static inline uint32_t get_vbar(void)
+{
+	uint32_t base;
+	asm volatile("mrc p15, 0, %0, c12, c0, 0" : "=r" (base) :: "cc");
+	return base;
+}
+
+static inline void set_vbar(uint32_t base)
+{
+	base &= 0xFFFFFFE0;
+	asm volatile("mcr p15, 0, %0, c12, c0, 0" :: "r" (base) : "cc");
 }

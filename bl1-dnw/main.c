@@ -16,13 +16,17 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#pragma once
+#include <stdbool.h>
+
+#include <dnw.h>
+#include <udc.h>
 
 
-void icache_invalidate(void);
-void icache_enable(void);
-void icache_disable(void);
-void dcache_invalidate(void);
-void dcache_enable(void);
-void dcache_disable(void);
-void tlb_invalidate(void);
+void main(void)
+{
+    udc_probe();
+    udc_register_gadget(&dnw_gadget);
+
+    while (true)
+        ;
+}

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -25,3 +25,4 @@ void uart0_init(void);
 void uart0_set_baudrate(uint32_t baud);
 int uart0_putc(int c);
 int uart0_getc(void);
+int uart0_puts(const char *s);

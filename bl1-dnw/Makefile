@@ -40,7 +40,7 @@ GDB				:= $(PREFIX)gdb
 OPT				:= -Os
 CSTD			?= -std=gnu11
 
-BINARY          := bl1
+BINARY          := dnw
 LDFLAGS			:= -specs=nano.specs -specs=nosys.specs
 
 ifeq ($(NDEBUG),1)
@@ -55,23 +55,28 @@ LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
 ###############################################################################
 # Source files
 
-VPATH			:= ../common
+VPATH			:= ../common ../drivers
 
-COMMON_AS_SRCS  := ../common/sdram.S
 AS_SRCS			:= startup.S
+COMMON_AS_SRCS  := ../common/sdram.S
+DRIVER_AS_SRCS	:=
 
-COMMON_C_SRCS	:= $(wildcard ../common/*.c)
 C_SRCS			:= $(wildcard *.c)
+COMMON_C_SRCS	:= $(wildcard ../common/*.c)
+DRIVER_C_SRCS	:= $(wildcard ../drivers/gadget/*.c)
 
-OBJS			:= $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
+OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
+				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS)) \
+				   $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
 				   $(patsubst ../common/%.c,build/$(PROFILE)/%.o,$(COMMON_C_SRCS)) \
-				   $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
-				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS))
+				   $(patsubst ../drivers/%.S,build/$(PROFILE)/%.o,$(DRIVER_AS_SRCS)) \
+				   $(patsubst ../drivers/%.c,build/$(PROFILE)/%.o,$(DRIVER_C_SRCS))
 
 INCLUDES        := -Iinclude \
-				   -I../common/include
+				   -I../common/include \
+				   -I../drivers/gadget/include
 
-DEFS			+= $(INCLUDES) -DBL1
+DEFS			+= $(INCLUDES) -DBL1 -DDNW
 FP_FLAGS		?= -mfloat-abi=soft
 ARCH_FLAGS		:= -mthumb -mthumb-interwork -mcpu=cortex-a8 $(FP_FLAGS)
 
@@ -150,7 +155,7 @@ build/$(PROFILE)/%.elf: $(OBJS) $(LDSCRIPT)
 build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	@echo "  OBJCOPY $*.bin"
 	$(Q)$(OBJCOPY) -Obinary $< $@
-	$(Q)../tools/header.py -p 0x4000 $@
+	$(Q)../tools/header.py $@
 
 $(LDSCRIPT): ${BINARY}.ld
 	@echo "  CPP     ${BINARY}.ld"

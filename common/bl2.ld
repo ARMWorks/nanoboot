@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -18,7 +18,7 @@
 
 #include "config.h"
 
-ENTRY(bl2_startup)
+ENTRY(entry)
 
 MEMORY
 {

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -19,13 +19,8 @@
 #include "config.h"
 
 .arm
-.globl bl1_startup
-bl1_startup:
-    /* Disable watchdog */
-    ldr r0, =0xE2700000
-    mov r1, #0
-    str r1, [r0]
-
+.globl entry
+entry:
     /* Switch to SVC mode */
     mrs r0, cpsr
     bic r0, r0, #0x1f
@@ -34,6 +29,10 @@ bl1_startup:
 
 	ldr	sp, =0xD0037D80 /* SRAM SVC stack */
     mov fp, #0 /* no previous frame, so fp=0 */
+
+	bl clock_init
+	bl sdram_init
+	bl uart0_init
 
 clear_bss:
 	ldr r0, =_sbss
@@ -46,10 +45,6 @@ clear_bss:
 	cmp r0, r1
 	ble 1b
 2:
-
-	bl clock_init
-	bl uart0_init
-	bl sdram_init
 
 	ldr r0, =main
 	blx r0

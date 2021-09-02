@@ -1,3 +1,21 @@
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
+/*
+ * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; version 2.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
 #include "dwc2_hw.h"
 #include "udc.h"
 
@@ -14,7 +32,7 @@
 #include <string.h>
 
 
-udc_t *udc;
+static udc_t udc = { 0 };
 
 extern void dwc2_phy_on(void);
 extern void dwc2_phy_off(void);
@@ -100,7 +118,7 @@ static void udc_disable(udc_t *udc)
 
 static inline void udc_ep0_zlp(udc_t *udc)
 {
-    writel((uint32_t) udc->ctrl, DIEPDMA(0));
+    writel((uint32_t) &udc->ctrl, DIEPDMA(0));
     writel(DIEPTSIZ0_PKTCNT(1), DIEPTSIZ0);
     writel(readl(DIEPCTL0) | DXEPCTL_EPENA | DXEPCTL_CNAK, DIEPCTL0);
     udc->ep0_state = EP0_WAIT_FOR_IN_COMPLETE;
@@ -108,29 +126,27 @@ static inline void udc_ep0_zlp(udc_t *udc)
 
 static inline void udc_pre_setup(udc_t *udc)
 {
+    writel((uint32_t) &udc->ctrl, DOEPDMA(0));
     writel((DXEPTSIZ_PKTCNT(1)) |
             DXEPTSIZ_XFERSIZE(sizeof(struct usb_ctrlrequest)), DOEPTSIZ(0));
-    writel((uint32_t) udc->ctrl, DOEPDMA(0));
     writel(readl(DOEPCTL0) | DXEPCTL_EPENA, DOEPCTL0);
 }
 
 static inline void udc_ep0_complete_out(udc_t *udc)
 {
+    writel((uint32_t) &udc->ctrl, DOEPDMA(0));
     writel(DXEPTSIZ_PKTCNT(1) |
             DXEPTSIZ_XFERSIZE(sizeof(struct usb_ctrlrequest)), DOEPTSIZ0);
-    writel((uint32_t) udc->ctrl, DOEPDMA(0));
     writel(readl(DOEPCTL0) | DXEPCTL_EPENA | DXEPCTL_CNAK, DOEPCTL0);
 }
 
 static int udc_setdma_rx(udc_ep_t *ep, udc_req_t *req)
 {
-    void *buf;
-    uint32_t length;
     uint32_t pktcnt;
     uint8_t ep_num = ep->addr & 0xf;
 
-	buf = req->buf + req->actual;
-	length = MIN(req->length - req->actual, ep->max_packet);
+	void *buf = req->buf + req->actual;
+	uint32_t length = MIN(req->length - req->actual, ep->max_packet);
 
     ep->len = length;
     ep->buf = buf;
@@ -152,13 +168,11 @@ static int udc_setdma_rx(udc_ep_t *ep, udc_req_t *req)
 
 static int udc_setdma_tx(udc_ep_t *ep, udc_req_t *req)
 {
-    void *buf;
-    uint32_t length;
     uint32_t pktcnt;
     uint8_t ep_num = ep->addr & 0xf;
 
-    buf = req->buf + req->actual;
-    length = req->length - req->actual;
+    void *buf = req->buf + req->actual;
+    uint32_t length = req->length - req->actual;
 
     if (ep_num == 0) {
         length = MIN(length, ep->max_packet);
@@ -202,8 +216,6 @@ static void udc_complete_rx(udc_t *udc, uint8_t ep_num)
     uint32_t ep_tsr = 0;
     uint32_t xfer_size = 0;
     bool is_short = false;
-
-    //printf("complete on %d", ep_num);
 
     if (list_empty(&ep->queue)) {
         return;
@@ -472,10 +484,8 @@ static void udc_ep0_read(udc_t *udc)
     if (req->length == 0) {
         /* zlp for Set_configuration, Set_interface,
          * or Bulk-Only mass storge reset */
-
         ep->len = 0;
         udc_ep0_zlp(udc);
-
         return;
     }
 
@@ -516,10 +526,10 @@ static int udc_ep0_write(udc_t *udc)
 
 static int udc_get_status(udc_t *udc)
 {
-    uint8_t ep_num = udc->ctrl->wIndex & 0x0f;
+    uint8_t ep_num = udc->ctrl.wIndex & 0x0f;
     uint16_t g_status = 0;
 
-    switch (udc->ctrl->bRequestType & USB_RECIP_MASK) {
+    switch (udc->ctrl.bRequestType & USB_RECIP_MASK) {
     case USB_RECIP_INTERFACE:
         g_status = 0;
         break;
@@ -529,7 +539,7 @@ static int udc_get_status(udc_t *udc)
         break;
 
     case USB_RECIP_ENDPOINT:
-        if (udc->ctrl->wLength > 2) {
+        if (udc->ctrl.wLength > 2) {
             return 1;
         }
         g_status = udc->ep[ep_num].stopped;
@@ -539,9 +549,9 @@ static int udc_get_status(udc_t *udc)
         return 1;
     }
 
-    memcpy(udc->ctrl, &g_status, sizeof(g_status));
+    memcpy(&udc->ctrl, &g_status, sizeof(g_status));
 
-    writel((uint32_t) udc->ctrl, DIEPDMA(0));
+    writel((uint32_t) &udc->ctrl, DIEPDMA(0));
     writel(DXEPTSIZ_PKTCNT(1) | DXEPTSIZ_XFERSIZE(2), DIEPTSIZ0);
     writel(readl(DIEPCTL0) | DXEPCTL_EPENA | DXEPCTL_CNAK, DIEPCTL0);
     udc->ep0_state = EP0_WAIT_FOR_NULL_COMPLETE;
@@ -636,17 +646,17 @@ static int udc_clear_feature(udc_ep_t *ep)
     udc_t *udc = ep->udc;
     uint8_t ep_num = ep->addr & 0xf;
 
-    if (udc->ctrl->wLength != 0) {
+    if (udc->ctrl.wLength != 0) {
         return 1;
     }
 
-    switch(udc->ctrl->bRequestType & USB_RECIP_MASK) {
+    switch(udc->ctrl.bRequestType & USB_RECIP_MASK) {
     case USB_RECIP_DEVICE:
         udc_ep0_zlp(udc);
         break;
 
     case USB_RECIP_ENDPOINT:
-        if (udc->ctrl->wValue == USB_ENDPOINT_HALT) {
+        if (udc->ctrl.wValue == USB_ENDPOINT_HALT) {
             if (ep_num == 0) {
                 udc_ep0_set_stall(ep);
                 return 0;
@@ -672,17 +682,17 @@ static int udc_set_feature(udc_ep_t *ep)
     udc_t *udc = ep->udc;
     uint8_t ep_num = ep->addr & 0xf;
 
-    if (udc->ctrl->wLength != 0) {
+    if (udc->ctrl.wLength != 0) {
         return 1;
     }
 
-    switch (udc->ctrl->bRequestType & USB_RECIP_MASK) {
+    switch (udc->ctrl.bRequestType & USB_RECIP_MASK) {
     case USB_RECIP_DEVICE:
         udc_ep0_zlp(udc);
         return 0;
 
     case USB_RECIP_ENDPOINT:
-        if (udc->ctrl->wValue == USB_ENDPOINT_HALT) {
+        if (udc->ctrl.wValue == USB_ENDPOINT_HALT) {
             if (ep_num == 0) {
                 udc_ep0_set_stall(ep);
                 return 0;
@@ -706,25 +716,25 @@ static void udc_ep0_setup(udc_t *udc)
 
     udc_nuke(ep, -EPROTO);
 
-    udc_fifo_read(ep, udc->ctrl, 8);
+    udc_fifo_read(ep, &udc->ctrl, 8);
 
-    if (udc->ctrl->bRequestType & USB_DIR_IN) {
+    if (udc->ctrl.bRequestType & USB_DIR_IN) {
         ep->addr |= USB_DIR_IN;
     } else {
         ep->addr &= ~USB_DIR_IN;
     }
 
-    bool req_std = (udc->ctrl->bRequestType & USB_TYPE_MASK) ==
+    bool req_std = (udc->ctrl.bRequestType & USB_TYPE_MASK) ==
             USB_TYPE_STANDARD;
 
     if (req_std) {
-        switch (udc->ctrl->bRequest) {
+        switch (udc->ctrl.bRequest) {
         case USB_REQ_SET_ADDRESS:
-            if (udc->ctrl->bRequestType !=
+            if (udc->ctrl.bRequestType !=
                     (USB_TYPE_STANDARD | USB_RECIP_DEVICE)) {
                 break;
             }
-            udc_set_address(udc, udc->ctrl->wValue);
+            udc_set_address(udc, udc->ctrl.wValue);
             return;
 
         case USB_REQ_GET_STATUS:
@@ -734,14 +744,14 @@ static void udc_ep0_setup(udc_t *udc)
             break;
 
         case USB_REQ_CLEAR_FEATURE:
-            ep_num = udc->ctrl->wLength & 0x0f;
+            ep_num = udc->ctrl.wLength & 0x0f;
             if (!udc_clear_feature(&udc->ep[ep_num])) {
                 return;
             }
             break;
 
         case USB_REQ_SET_FEATURE:
-            ep_num = udc->ctrl->wLength & 0x0f;
+            ep_num = udc->ctrl.wLength & 0x0f;
             if (!udc_set_feature(&udc->ep[ep_num])) {
                 return;
             }
@@ -750,7 +760,7 @@ static void udc_ep0_setup(udc_t *udc)
     }
 
     if (udc->gadget) {
-        int ret = udc->gadget->setup(udc, udc->ctrl);
+        int ret = udc->gadget->setup(udc, &udc->ctrl);
         if (ret < 0) {
             udc_ep0_set_stall(ep);
             udc->ep0_state = EP0_WAIT_FOR_SETUP;
@@ -782,16 +792,18 @@ static void udc_reconfig(udc_t *udc)
     writel(readl(GRSTCTL) | GRSTCTL_CSFTRST, GRSTCTL);
     while(readl(GRSTCTL) & GRSTCTL_CSFTRST)
         ;
+    mdelay(1);
     while(!(readl(GRSTCTL) & GRSTCTL_AHBIDLE))
         ;
+
+    /* Disconnect */
+    writel(readl(DCTL) | DCTL_SFTDISCON, DCTL);
 
     /* Force device mode */
     writel(readl(GUSBCFG) | GUSBCFG_FORCEDEVMODE, GUSBCFG);
     mdelay(25);
 
-    /* Disconnect/reconnect */
-    writel(readl(DCTL) | DCTL_SFTDISCON, DCTL);
-    udelay(20);
+    /* Reconnect */
     writel(readl(DCTL) & ~DCTL_SFTDISCON, DCTL);
 
     /* Unmask core interrupts */
@@ -927,6 +939,7 @@ static int udc_ep_enable(udc_ep_t *ep,
         return -ERANGE;
     }
 
+    udc_t *udc = ep->udc;
     if (!udc->gadget || udc->speed == USB_SPEED_UNKNOWN) {
         return -ESHUTDOWN;
     }
@@ -993,6 +1006,7 @@ static int udc_queue(udc_ep_t *ep, udc_req_t *req)
         return -EINVAL;
     }
 
+    udc_t *udc = ep->udc;
     if (!ep->udc || udc->speed == USB_SPEED_UNKNOWN) {
         return -ESHUTDOWN;
     }
@@ -1082,51 +1096,38 @@ static int udc_set_halt(udc_ep_t *ep, int value)
 
 int udc_probe(void)
 {
-    udc = calloc(sizeof(udc_t), 1);
-    if (!udc) {
-        return -ENOMEM;
-    }
-
-    udc->ops = &udc_ops;
-    udc->ctrl = memalign(4, sizeof(udc->ctrl));
-    if (!udc->ctrl) {
-        free(udc);
-        return -ENOMEM;
-    }
-
-    memset(udc->ctrl, 0, sizeof(*udc->ctrl));
-
-    udc_reinit(udc);
+    udc.ops = &udc_ops;
+    udc_reinit(&udc);
     return 0;
 }
 
 int udc_register_gadget(udc_gadget_t *gadget)
 {
     bool reenable_irqs = disable_irqs();
-    udc_stop_activity(udc);
-    if (udc->gadget) {
-        udc->gadget->unbind(udc);
-        udc->gadget = NULL;
+    udc_stop_activity(&udc);
+    if (udc.gadget) {
+        udc.gadget->unbind(&udc);
+        udc.gadget = NULL;
     }
     irq_disable(IRQ_OTG);
     if (reenable_irqs) {
         enable_irqs();
     }
-    udc_disable(udc);
+    udc_disable(&udc);
 
     if (gadget) {
         reenable_irqs = disable_irqs();
-        udc->gadget = gadget;
-        int retval = gadget->bind(udc);
+        udc.gadget = gadget;
+        int retval = gadget->bind(&udc);
         if (reenable_irqs) {
             enable_irqs();
         }
         if (retval) {
-            udc->gadget = NULL;
+            udc.gadget = NULL;
             return retval;
         }
         irq_enable(IRQ_OTG);
-        udc_enable(udc);
+        udc_enable(&udc);
     }
 
     return 0;

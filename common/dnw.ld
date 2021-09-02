@@ -24,24 +24,8 @@ MEMORY
 {
   ROM (xr)      : ORIGIN = 0x00000000, LENGTH = 64K
   SRAM (xrw)    : ORIGIN = 0xD0020000, LENGTH = 96K
-  SDRAM (xrw)   : ORIGIN = 0x20000000, LENGTH = 1536M
+  SDRAM (xrw)   : ORIGIN = 0x22000000, LENGTH = 32M
 }
-
-/* global variables */
-PROVIDE (globalBlockSize = 0xD0037480);
-PROVIDE (globalSDHCInfoBit = 0xD0037484);
-PROVIDE (globalSDMMCBase = 0xD0037488);
-
-/* functions */
-PROVIDE (NF8_ReadPage_Adv_addr = 0xD0037F90);
-PROVIDE (NF16_ReadPage_Adv_addr = 0xD0037F94);
-PROVIDE (CopySDMMCtoMem_addr = 0xD0037F98);
-PROVIDE (CopyMMC4_3toMem_addr = 0xD0037F9C);
-PROVIDE (CopyOND_ReadMultiPages_addr = 0xD0037FA0);
-PROVIDE (CopyOND_ReadMultiPages_Adv_addr = 0xD0037FA4);
-PROVIDE (Copy_eSSDtoMem_addr = 0xD0037FA8);
-PROVIDE (Copy_eSSDtoMem_Adv_addr = 0xD0037FAC);
-PROVIDE (NF8_ReadPage_Adv128p_addr = 0xD0037FB0);
 
 SECTIONS
 {
@@ -88,20 +72,14 @@ SECTIONS
     *(COMMON)
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >SRAM
+  } >SDRAM
 
   .heap (NOLOAD) :
   {
     . = ALIGN(8);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
-  } >SRAM
-
-	.sdram (NOLOAD) :
-  {
-    *(.sdram)
-		*(.sdram*)
-	} >SDRAM
+  } >SDRAM
 
   /DISCARD/ :
   {

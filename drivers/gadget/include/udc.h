@@ -1,7 +1,26 @@
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
+/*
+ * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; version 2.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
 #pragma once
 
 #include <linux/list.h>
 #include <linux/usb/ch9.h>
+
 
 typedef enum ep0_state ep0_state_t;
 typedef struct udc udc_t;
@@ -37,7 +56,7 @@ struct udc_ep {
 struct udc {
     udc_ep_t ep[16];
     ep0_state_t ep0_state;
-    struct usb_ctrlrequest *ctrl;
+    struct usb_ctrlrequest ctrl __attribute__((aligned(4)));
 
     enum usb_device_speed speed;
     uint16_t ep0_fifo_size;

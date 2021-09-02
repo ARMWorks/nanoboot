@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -18,37 +18,17 @@
 
 #include "config.h"
 
-#define CR_V (1 << 13)
-
 .arm
-.globl bl2_startup
-bl2_startup:
-	ldr r0, =NANOBOOT_STACK_TOP
-	/* Setup FIQ stack */
-	msr cpsr_c, #0xD1
-	mov sp, r0
-	sub r0, r0, #NANOBOOT_FIQ_STACK_SIZE
-	/* Setup IRQ stack */
-	msr cpsr_c, #0xD2
-	mov sp, r0
-	mov fp, #0
-	sub r0, r0, #NANOBOOT_IRQ_STACK_SIZE
-	/* Setup ABT stack */
-	msr cpsr_c, #0xD7
-	mov sp, r0
-	sub r0, r0, #NANOBOOT_ABT_STACK_SIZE
-	/* Setup UND stack */
-	msr cpsr_c, #0xDB
-	mov sp, r0
-	sub r0, r0, #NANOBOOT_UND_STACK_SIZE
-	/* Setup SVC stack */
-	msr cpsr_c, #0xD3
-	mov sp, r0
-	sub r0, r0, #NANOBOOT_SVC_STACK_SIZE
-	/* Setup SYS stack with interrupts enabled */
-	msr cpsr_c, #0xDF
-	mov sp, r0
-    mov fp, #0 /* no previous frame */
+.globl entry
+entry:
+    /* Switch to SVC mode */
+    mrs r0, cpsr
+    bic r0, r0, #0x1f
+    orr r0, r0, #0xd3
+    msr cpsr, r0
+
+	ldr	sp, =0xD0037D80 /* SRAM SVC stack */
+    mov fp, #0 /* no previous frame, so fp=0 */
 
 clear_bss:
 	ldr r0, =_sbss
@@ -62,17 +42,9 @@ clear_bss:
 	ble 1b
 2:
 
-	bl icache_disable
-	bl icache_invalidate
-
-	bl mmu_init
-	bl mmu_load
-	bl tlb_invalidate
-	bl mmu_enable
-	bl icache_enable
-
-	bl irq_init
-	bl timer_init
+	bl clock_init
+	bl uart0_init
+	bl sdram_init
 
 	ldr r0, =main
 	blx r0
@@ -88,7 +60,7 @@ error_halt:
 1:
 	/* flash LEDs */
 	str r1, [r2]
-	mov r0, #0x400000
+	mov r0, #0x1000000
 2:
 	cmp r0, #0
 	sub r0, r0, #1

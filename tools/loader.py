@@ -479,8 +479,8 @@ class Monitor(object):
 
 
 def main():
-    parser = argparse.ArgumentParser('idf_monitor - a serial output monitor '
-            'for esp-idf')
+    parser = argparse.ArgumentParser('loader - a serial loader for Samsung '
+            'bl1 uart loader')
 
     parser.add_argument(
         '--port', '-p',

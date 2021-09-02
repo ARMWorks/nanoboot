@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
 /*
  * Copyright (C) 2021 Jeff Kent <jeff@jkent.net>
  *
@@ -17,16 +17,14 @@
  */
 
 #include "asm/io.h"
-#include "udc.h"
 #include "irq.h"
-#include "mmu.h"
 #include "s5pv210.h"
 #include "dnw.h"
 #include "system.h"
 #include "timer.h"
 #include "uart.h"
+#include "udc.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 
 
@@ -39,7 +37,7 @@ static void isr_key(uint32_t irq, void *pv)
 
 void main(void)
 {
-    puts("BL2");
+    uart0_puts("BL2");
 
     writel(readl(ELFIN_GPIO_BASE + GPH2CON_OFFSET) | 0xF,
             ELFIN_GPIO_BASE + GPH2CON_OFFSET);
@@ -57,7 +55,7 @@ void main(void)
     enable_irqs();
 
     while (1) {
-        putchar('.'); fflush(stdout);
+        uart0_putc('.');
         udelay(1000000);
     }
 }
