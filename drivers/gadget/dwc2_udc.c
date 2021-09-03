@@ -895,7 +895,7 @@ static void udc_stop_activity(udc_t *udc)
         udc_nuke(ep, -ESHUTDOWN);
     }
 
-    udc_reinit(udc);
+    udc_reconfig(udc);
 }
 
 static void udc_set_max_pktsize(udc_t *udc, enum usb_device_speed speed)
@@ -962,7 +962,6 @@ static int udc_ep_enable(udc_ep_t *ep,
 
 static int udc_ep_disable(udc_ep_t *ep)
 {
-
     bool reenable_irqs = disable_irqs();
     udc_nuke(ep, -ESHUTDOWN);
     ep->desc = NULL;
@@ -1055,7 +1054,6 @@ static int udc_dequeue(udc_ep_t *ep, udc_req_t *_req)
     }
 
     udc_done(ep, req, -ECONNRESET);
-
     if (reenable_irqs) {
         enable_irqs();
     }

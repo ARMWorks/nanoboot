@@ -29,13 +29,18 @@ void dwc2_phy_on(void)
     writel(UPHYCLK_PHYFSEL_24MHZ, UPHYCLK);
     writel(readl(UPHYPWR) & ~UPHYPWR_PHY0, UPHYPWR);
     writel(readl(UPHYRST) | URSTCON_PHY0, UPHYRST);
-    udelay(10);
+    udelay(20);
     writel(readl(UPHYRST) & ~URSTCON_PHY0, UPHYRST);
     udelay(80);
 }
 
 void dwc2_phy_off(void)
 {
+    writel(readl(UPHYRST) | URSTCON_PHY0, UPHYRST);
+    udelay(20);
+    writel(readl(UPHYRST) & ~URSTCON_PHY0, UPHYRST);
+    udelay(20);
+
     writel(readl(UPHYPWR) | UPHYPWR_PHY0, UPHYPWR);
     writel(readl(USB_ISOL) & ~USB_ISOL_DEVICE, USB_ISOL);
 }

@@ -309,9 +309,8 @@ static void complete(udc_ep_t *ep, udc_req_t *req)
 
     if (priv->offset >= priv->length) {
         udc->ops->free_req(ep, req);
-        udc->ops->ep_disable(&udc->ep[1]);
-        udc->ops->ep_disable(&udc->ep[2]);
 
+        udc_register_gadget(NULL);
         icache_invalidate();
         ((void (*)(void))priv->address)();
     }
@@ -335,7 +334,7 @@ static void configured(udc_t *udc)
 }
 
 #define MANUFACTURER_STRING u"Jeff Kent <jeff@jkent.net>"
-#define PRODUCT_STRING u"Nanoboot bootloader"
+#define PRODUCT_STRING u"Nanoboot DNW"
 
 /* High speed descriptors */
 __attribute__((aligned(4)))
