@@ -40,7 +40,7 @@ if __name__ == '__main__':
             help='load and execute address, defaults to 0x20000000')
     args = parser.parse_args()
 
-    timeout = 15
+    timeout = 30
     start = time.time()
     while start + timeout > time.time():
         dev = usb.core.find(idVendor=0x04e8, idProduct=0x1234)
@@ -82,7 +82,7 @@ if __name__ == '__main__':
             data, chunk = data[CHUNK_SIZE:], data[:CHUNK_SIZE]
             ep.write(chunk)
 
-        time.sleep(0.5)
+        time.sleep(1)
         dev = usb.core.find(idVendor=0x04e8, idProduct=0x1234)
         if dev is None:
             raise ValueError('device not found')
