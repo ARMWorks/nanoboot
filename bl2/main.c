@@ -49,8 +49,8 @@ void main(void)
     irq_set_handler(IRQ_EINT16_31, isr_key, NULL);
     irq_enable(IRQ_EINT16_31);
 
-    udc_probe();
-    udc_register_gadget(&dnw_gadget);
+    //udc_probe();
+    //udc_register_gadget(&dnw_gadget);
 
     while (1) {
         uart0_putc('.');

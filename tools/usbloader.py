@@ -26,6 +26,8 @@ from argparse import ArgumentParser, FileType
 import usb.core
 import usb.util
 
+VEND_REQ_GET_EXECADDR = 0
+VEND_REQ_SET_EXECADDR = 1
 
 CHUNK_SIZE = 16 * 1024
 
@@ -35,9 +37,10 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='Python Samsung DNW tool')
     parser.add_argument('FILE', type=FileType('rb', 0),
             help='file to load and execute')
-    parser.add_argument('ADDRESS', nargs='?', type=lambda x: int(x, 0),
-            default=0x20000000,
-            help='load and execute address, defaults to 0x20000000')
+    parser.add_argument('LOADADDR', nargs='?', type=lambda x: int(x, 0),
+            default=0x20000000, help='load address, defaults to 0x20000000')
+    parser.add_argument('EXECADDR', nargs='?', type=lambda x: int(x, 0),
+            default = None, help='load address, defaults to load address')
     args = parser.parse_args()
 
     timeout = 30
@@ -91,9 +94,13 @@ if __name__ == '__main__':
         print('Nanoboot unavailable', file=sys.stderr)
 
     dev.set_configuration()
+
+    if args.EXECADDR is not None:
+        dev.ctrl_transfer(0x40, VEND_REQ_SET_EXECADDR, 0, 0,
+                struct.pack('<I', args.EXECADDR))
+
     cfg = dev.get_active_configuration()
     intf = cfg[(0, 0)]
-
     ep = usb.util.find_descriptor(intf, custom_match = lambda e: \
             usb.util.endpoint_direction(e.bEndpointAddress) == \
             usb.util.ENDPOINT_OUT)
@@ -104,7 +111,7 @@ if __name__ == '__main__':
     data = f.read()
     f.close()
 
-    data = struct.pack('<II', args.ADDRESS, len(data) + 10) + data
+    data = struct.pack('<II', args.LOADADDR, len(data) + 10) + data
     checksum = 0
     for byte in data:
         checksum += byte

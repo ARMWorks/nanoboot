@@ -70,6 +70,7 @@ clear_bss:
 	bl icache_enable
 
 	bl irq_init
+	bl uart0_init
 	bl timer_init
 
 	ldr r0, =main

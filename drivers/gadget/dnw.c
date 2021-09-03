@@ -20,6 +20,7 @@
 #include "udc.h"
 
 #include <cache.h>
+#include <irq.h>
 #include <macros.h>
 
 #include <linux/errno.h>
@@ -36,20 +37,28 @@
 #define NUM_STRING_DESC (3)
 #define NUM_CONFIG_DESC (1)
 
+enum {
+    VEND_REQ_GET_EXECADDR,
+    VEND_REQ_SET_EXECADDR,
+};
+
+
 typedef struct gadget_priv gadget_priv_t;
 struct gadget_priv {
     uint8_t chunk[CHUNK_MAX_SIZE];
     uint16_t config;
     uint32_t chunk_num;
-    void *address;
+    void *loadaddr;
+    void *execaddr;
     uint32_t length;
     uint32_t offset;
 };
 
 /* functions */
-static inline int process_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl);
-static inline int process_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl);
-static inline int process_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl);
+static inline int usb_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl);
+static inline int usb_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl);
+static inline int usb_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl);
+static inline int vend_req_execaddr(udc_t *udc, struct usb_ctrlrequest *ctrl);
 static inline void set_config(udc_t *udc, int config);
 static void configured(udc_t *udc);
 
@@ -91,31 +100,42 @@ void unbind(udc_t *udc)
 
 int setup(udc_t *udc, struct usb_ctrlrequest *ctrl)
 {
-    if ((ctrl->bRequestType & USB_TYPE_MASK) != USB_TYPE_STANDARD) {
-        return -1;
+
+    switch (ctrl->bRequestType & USB_TYPE_MASK) {
+    case USB_TYPE_STANDARD:
+        switch (ctrl->bRequest) {
+        case USB_REQ_GET_DESCRIPTOR:
+            if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_DEVICE) {
+                break;
+            }
+            return usb_req_desc(udc, ctrl);
+
+        case USB_REQ_GET_CONFIGURATION:
+        case USB_REQ_SET_CONFIGURATION:
+            if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_DEVICE) {
+                break;
+            }
+            return usb_req_config(udc, ctrl);
+
+        case USB_REQ_GET_INTERFACE:
+        case USB_REQ_SET_INTERFACE:
+            if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_INTERFACE) {
+                break;
+            }
+            return usb_req_iface(udc, ctrl);
+        }
+
+    case USB_TYPE_VENDOR:
+        switch (ctrl->bRequest) {
+        case VEND_REQ_GET_EXECADDR:
+        case VEND_REQ_SET_EXECADDR:
+            if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_DEVICE) {
+                break;
+            }
+            return vend_req_execaddr(udc, ctrl);
+        }
     }
 
-    switch (ctrl->bRequest) {
-    case USB_REQ_GET_DESCRIPTOR:
-        if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_DEVICE) {
-            break;
-        }
-        return process_req_desc(udc, ctrl);
-
-    case USB_REQ_GET_CONFIGURATION:
-    case USB_REQ_SET_CONFIGURATION:
-        if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_DEVICE) {
-            break;
-        }
-        return process_req_config(udc, ctrl);
-
-    case USB_REQ_GET_INTERFACE:
-    case USB_REQ_SET_INTERFACE:
-        if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_INTERFACE) {
-            break;
-        }
-        return process_req_iface(udc, ctrl);
-    }
     return -1;
 }
 
@@ -127,7 +147,7 @@ udc_gadget_t dnw_gadget = {
 
 /*****************************************************************************/
 
-static inline int process_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl)
+static inline int usb_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl)
 {
     udc_req_t *req = NULL;
 
@@ -200,10 +220,9 @@ static inline int process_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl)
     return -1;
 }
 
-static inline int process_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl)
+static inline int usb_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl)
 {
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
-
     udc_req_t *req = NULL;
 
     switch (ctrl->bRequest) {
@@ -215,14 +234,12 @@ static inline int process_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl)
 
         req = udc->ops->alloc_req(&udc->ep[0]);
         req->buf = &priv->config;
-        udc->ops->queue(&udc->ep[0], req);
         break;
 
     case USB_REQ_GET_CONFIGURATION:
         req = udc->ops->alloc_req(&udc->ep[0]);
         req->buf = &priv->config;
         req->length = 1;
-        udc->ops->queue(&udc->ep[0], req);
         break;
     }
 
@@ -235,7 +252,7 @@ static inline int process_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl)
     return -1;
 }
 
-static inline int process_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl)
+static inline int usb_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl)
 {
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
     uint8_t interface = ctrl->wIndex & 0xff;
@@ -254,7 +271,29 @@ static inline int process_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl)
         priv->config = 0;
         req->buf = &priv->config;
         req->length = 1;
+        break;
+    }
+
+    if (req) {
+        req->length = MIN((size_t) ctrl->wLength, req->length);
         udc->ops->queue(&udc->ep[0], req);
+        return 0;
+    }
+
+    return -1;
+}
+
+static inline int vend_req_execaddr(udc_t *udc, struct usb_ctrlrequest *ctrl)
+{
+    gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
+    udc_req_t *req = NULL;
+
+    switch (ctrl->bRequest) {
+    case VEND_REQ_GET_EXECADDR:
+    case VEND_REQ_SET_EXECADDR:
+        req = udc->ops->alloc_req(&udc->ep[0]);
+        req->buf = &priv->execaddr;
+        req->length = sizeof(priv->execaddr);
         break;
     }
 
@@ -292,19 +331,24 @@ static inline void set_config(udc_t *udc, int config)
     }
 }
 
-static void complete(udc_ep_t *ep, udc_req_t *req)
+static void ep2_complete(udc_ep_t *ep, udc_req_t *req)
 {
     udc_t *udc = ep->udc;
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
 
+    if (req->status) {
+        udc->ops->free_req(ep, req);
+        return;
+    }
+
     if (priv->chunk_num == 0 && req->actual >= 10) {
-        memcpy(&priv->address, priv->chunk, sizeof(priv->address));
+        memcpy(&priv->loadaddr, priv->chunk, sizeof(priv->loadaddr));
         memcpy(&priv->length, priv->chunk + 4, sizeof(priv->length));
         priv->length -= 10;
-        memcpy(priv->address, priv->chunk + 8, req->actual - 8);
+        memcpy(priv->loadaddr, priv->chunk + 8, req->actual - 8);
         priv->offset = req->actual - 8;
     } else {
-        memcpy(priv->address + priv->offset, priv->chunk, req->actual);
+        memcpy(priv->loadaddr + priv->offset, priv->chunk, req->actual);
         priv->offset += req->actual;
     }
 
@@ -312,13 +356,18 @@ static void complete(udc_ep_t *ep, udc_req_t *req)
         udc->ops->free_req(ep, req);
 
         udc_register_gadget(NULL);
+        disable_irqs();
         icache_invalidate();
-        ((void (*)(void))priv->address)();
+        if (priv->execaddr) {
+            ((void (*)(void))priv->execaddr)();
+        } else {
+            ((void (*)(void))priv->loadaddr)();
+        }
     }
 
     priv->chunk_num++;
     req->actual = 0;
-    udc->ops->queue(&udc->ep[2], req);
+    udc->ops->queue(ep, req);
 }
 
 static void configured(udc_t *udc)
@@ -329,7 +378,7 @@ static void configured(udc_t *udc)
         udc_req_t *req = udc->ops->alloc_req(&udc->ep[2]);
         req->buf = priv->chunk;
         req->length = sizeof(priv->chunk);
-        req->complete = complete;
+        req->complete = ep2_complete;
         udc->ops->queue(&udc->ep[2], req);
     }
 }
