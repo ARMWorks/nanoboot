@@ -865,11 +865,7 @@ static void udc_done(udc_ep_t *ep, udc_req_t *req, int status)
 
     ep->stopped = true;
     if (req->complete) {
-        bool reenable_irqs = disable_irqs();
         req->complete(ep, req);
-        if (reenable_irqs) {
-            enable_irqs();
-        }
     }
     ep->stopped = stopped;
 }
@@ -951,24 +947,20 @@ static int udc_ep_enable(udc_ep_t *ep,
     udc_set_nak(ep);
     udc_set_halt(ep, 0);
 
-    bool reenable_irqs = disable_irqs();
     udc_ep_activate(ep);
-    if (reenable_irqs) {
-        enable_irqs();
-    }
 
     return 0;
 }
 
 static int udc_ep_disable(udc_ep_t *ep)
 {
-    bool reenable_irqs = disable_irqs();
+    // bool reenable_irqs = disable_irqs();
     udc_nuke(ep, -ESHUTDOWN);
     ep->desc = NULL;
     ep->stopped = true;
-    if (reenable_irqs) {
-        enable_irqs();
-    }
+    // if (reenable_irqs) {
+    //     enable_irqs();
+    // }
 
     return 0;
 }
@@ -1040,23 +1032,16 @@ static int udc_dequeue(udc_ep_t *ep, udc_req_t *_req)
         return -EINVAL;
     }
 
-    bool reenable_irqs = disable_irqs();
     list_for_each_entry(req, &ep->queue, queue) {
         if (req == _req) {
             break;
         }
     }
     if (req != _req) {
-        if (reenable_irqs) {
-            enable_irqs();
-        }
         return -EINVAL;
     }
 
     udc_done(ep, req, -ECONNRESET);
-    if (reenable_irqs) {
-        enable_irqs();
-    }
 
     return 0;
 }
@@ -1101,25 +1086,17 @@ int udc_probe(void)
 
 int udc_register_gadget(udc_gadget_t *gadget)
 {
-    bool reenable_irqs = disable_irqs();
-    udc_stop_activity(&udc);
     if (udc.gadget) {
+        udc_stop_activity(&udc);
         udc.gadget->unbind(&udc);
         udc.gadget = NULL;
+        irq_disable(IRQ_OTG);
+        udc_disable(&udc);
     }
-    irq_disable(IRQ_OTG);
-    if (reenable_irqs) {
-        enable_irqs();
-    }
-    udc_disable(&udc);
 
     if (gadget) {
-        reenable_irqs = disable_irqs();
         udc.gadget = gadget;
         int retval = gadget->bind(&udc);
-        if (reenable_irqs) {
-            enable_irqs();
-        }
         if (retval) {
             udc.gadget = NULL;
             return retval;

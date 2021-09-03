@@ -52,8 +52,6 @@ void main(void)
     udc_probe();
     udc_register_gadget(&dnw_gadget);
 
-    enable_irqs();
-
     while (1) {
         uart0_putc('.');
         udelay(1000000);

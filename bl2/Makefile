@@ -155,6 +155,7 @@ build/$(PROFILE)/%.elf: $(OBJS) $(LDSCRIPT)
 build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	@echo "  OBJCOPY $*.bin"
 	$(Q)$(OBJCOPY) -Obinary $< $@
+	$(Q)../tools/header.py $@
 
 $(LDSCRIPT): ${BINARY}.ld
 	@echo "  CPP     ${BINARY}.ld"

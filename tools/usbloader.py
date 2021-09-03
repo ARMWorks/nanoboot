@@ -104,7 +104,7 @@ if __name__ == '__main__':
     data = f.read()
     f.close()
 
-    data = struct.pack('<II', 0xD0020000, len(data) + 10) + data
+    data = struct.pack('<II', args.ADDRESS, len(data) + 10) + data
     checksum = 0
     for byte in data:
         checksum += byte

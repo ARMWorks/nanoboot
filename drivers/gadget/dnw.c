@@ -26,6 +26,7 @@
 #include "linux/usb/ch9.h"
 
 #include <malloc.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -301,7 +302,7 @@ static void complete(udc_ep_t *ep, udc_req_t *req)
         memcpy(&priv->length, priv->chunk + 4, sizeof(priv->length));
         priv->length -= 10;
         memcpy(priv->address, priv->chunk + 8, req->actual - 8);
-        priv->offset += req->actual - 8;
+        priv->offset = req->actual - 8;
     } else {
         memcpy(priv->address + priv->offset, priv->chunk, req->actual);
         priv->offset += req->actual;
