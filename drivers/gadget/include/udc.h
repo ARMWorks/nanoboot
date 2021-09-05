@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include <linux/list.h>
 #include <linux/usb/ch9.h>
 

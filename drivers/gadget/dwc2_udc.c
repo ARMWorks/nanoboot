@@ -21,11 +21,11 @@
 
 #include <irq.h>
 #include <s5pv210.h>
-#include <timer.h>
-#include <macros.h>
 
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
+#include <linux/kernel.h>
 #include <linux/usb/ch9.h>
 
 #include <malloc.h>
@@ -146,7 +146,7 @@ static int udc_setdma_rx(udc_ep_t *ep, udc_req_t *req)
     uint8_t ep_num = ep->addr & 0xf;
 
 	void *buf = req->buf + req->actual;
-	uint32_t length = MIN(req->length - req->actual, ep->max_packet);
+	uint32_t length = min_t(size_t, req->length - req->actual, ep->max_packet);
 
     ep->len = length;
     ep->buf = buf;
@@ -175,7 +175,7 @@ static int udc_setdma_tx(udc_ep_t *ep, udc_req_t *req)
     uint32_t length = req->length - req->actual;
 
     if (ep_num == 0) {
-        length = MIN(length, ep->max_packet);
+        length = min_t(size_t, length, ep->max_packet);
     }
 
     ep->len = length;
@@ -232,7 +232,7 @@ static void udc_complete_rx(udc_t *udc, uint8_t ep_num)
 
     xfer_size = ep->len - xfer_size;
 
-    req->actual += MIN(xfer_size, (req->length - req->actual));
+    req->actual += min_t(size_t, xfer_size, (req->length - req->actual));
     is_short = !!(xfer_size % ep->max_packet);
 
     if (is_short || req->actual == req->length) {
@@ -270,7 +270,7 @@ static void udc_complete_tx(udc_t *udc, uint8_t ep_num)
     req = list_entry(ep->queue.next, udc_req_t, queue);
 
     xfer_size = ep->len;
-    req->actual += MIN(xfer_size, (req->length - req->actual));
+    req->actual += min_t(size_t, xfer_size, (req->length - req->actual));
 
     if (ep_num == 0) {
         if (udc->ep0_state == EP0_DATA_STATE_XMIT) {

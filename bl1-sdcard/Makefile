@@ -71,7 +71,7 @@ OBJS			:= $(patsubst ../common/%.S,build/$(PROFILE)/%.o,$(COMMON_AS_SRCS)) \
 INCLUDES        := -Iinclude \
 				   -I../common/include
 
-DEFS			+= $(INCLUDES) -DBL1
+DEFS			+= $(INCLUDES) -DBL1 -D__KERNEL__ -D__LINUX_ARM_ARCH__=7
 FP_FLAGS		?= -mfloat-abi=soft
 ARCH_FLAGS		:= -mthumb -mthumb-interwork -mcpu=cortex-a8 $(FP_FLAGS)
 

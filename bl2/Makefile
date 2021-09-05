@@ -63,7 +63,24 @@ DRIVER_AS_SRCS	:=
 
 C_SRCS			:= $(wildcard *.c)
 COMMON_C_SRCS	:= $(wildcard ../common/*.c)
-DRIVER_C_SRCS	:= $(wildcard ../drivers/gadget/*.c)
+DRIVER_C_SRCS	:= $(wildcard ../drivers/gadget/*.c) \
+				   $(wildcard ../drivers/mtd/*.c) \
+				   $(wildcard ../drivers/mtd/nand/*.c) \
+				   $(wildcard ../drivers/mtd/nand/raw/*.c) \
+				   $(wildcard ../drivers/mtd/onenand/*.c) \
+				   ../drivers/mtd/ubi/attach.c \
+				   ../drivers/mtd/ubi/build.c \
+				   ../drivers/mtd/ubi/crc32.c \
+				   ../drivers/mtd/ubi/debug.c \
+				   ../drivers/mtd/ubi/eba.c \
+				   ../drivers/mtd/ubi/fastmap.c \
+				   ../drivers/mtd/ubi/io.c \
+				   ../drivers/mtd/ubi/kapi.c \
+				   ../drivers/mtd/ubi/misc.c \
+				   ../drivers/mtd/ubi/upd.c \
+				   ../drivers/mtd/ubi/vmt.c \
+				   ../drivers/mtd/ubi/vtbl.c \
+				   ../drivers/mtd/ubi/wl.c
 
 OBJS			:= $(patsubst %.S,build/$(PROFILE)/%.o,$(AS_SRCS)) \
 				   $(patsubst %.c,build/$(PROFILE)/%.o,$(C_SRCS)) \
@@ -76,7 +93,7 @@ INCLUDES        := -Iinclude \
 				   -I../common/include \
 				   -I../drivers/gadget/include
 
-DEFS			+= $(INCLUDES) -DBL2
+DEFS			+= $(INCLUDES) -DBL2 -D__KERNEL__ -D__UBOOT__ -D__LINUX_ARM_ARCH__=7
 FP_FLAGS		?= -mfloat-abi=soft
 ARCH_FLAGS		:= -mcpu=cortex-a8 $(FP_FLAGS)
 
@@ -86,7 +103,7 @@ ARCH_FLAGS		:= -mcpu=cortex-a8 $(FP_FLAGS)
 TGT_CFLAGS		+= $(OPT) $(CSTD) $(DEBUG)
 TGT_CFLAGS		+= $(ARCH_FLAGS)
 TGT_CFLAGS		+= -Wextra -Wimplicit-function-declaration
-TGT_CFLAGS		+= -Wstrict-prototypes -Wno-unused-parameter
+TGT_CFLAGS		+= -Wstrict-prototypes -Wno-unused-parameter -Wno-sign-compare
 TGT_CFLAGS      += -Wno-implicit-fallthrough -Wno-main -Wno-shift-negative-value
 TGT_CFLAGS		+= -fno-common -ffunction-sections -fdata-sections -fno-strict-aliasing
 

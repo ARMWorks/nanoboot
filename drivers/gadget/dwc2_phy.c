@@ -18,9 +18,8 @@
 
 #include "dwc2_hw.h"
 
-#include <timer.h>
-
 #include <asm/io.h>
+#include <linux/delay.h>
 
 
 void dwc2_phy_on(void)

@@ -46,7 +46,7 @@ void timer_init(void)
     lastinc = timer_get_us_down();
 }
 
-uint32_t timer_get(uint32_t base)
+uint32_t get_timer(uint32_t base)
 {
     uint32_t now = timer_get_us_down();
 

@@ -76,7 +76,7 @@ INCLUDES        := -Iinclude \
 				   -I../common/include \
 				   -I../drivers/gadget/include
 
-DEFS			+= $(INCLUDES) -DBL1 -DDNW
+DEFS			+= $(INCLUDES) -DBL1 -DDNW -D__KERNEL__ -D__LINUX_ARM_ARCH__=7
 FP_FLAGS		?= -mfloat-abi=soft
 ARCH_FLAGS		:= -mthumb -mthumb-interwork -mcpu=cortex-a8 $(FP_FLAGS)
 

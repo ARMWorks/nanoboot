@@ -16,41 +16,21 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "asm/io.h"
-#include "irq.h"
-#include "s5pv210.h"
-#include "dnw.h"
-#include "system.h"
 #include "timer.h"
 #include "uart.h"
-#include "udc.h"
+
+#include <linux/delay.h>
+#include <nand.h>
 
 #include <stdlib.h>
 
 
-static void isr_key(uint32_t irq, void *pv)
-{
-    uart0_putc('!');
-    writel(readl(ELFIN_GPIO_BASE + EXT_INT_2_PEND) | (1 << 0),
-            ELFIN_GPIO_BASE + EXT_INT_2_PEND);
-}
-
 void main(void)
 {
+    uart0_set_baudrate(460800);
     uart0_puts("BL2");
 
-    writel(readl(ELFIN_GPIO_BASE + GPH2CON_OFFSET) | 0xF,
-            ELFIN_GPIO_BASE + GPH2CON_OFFSET);
-    writel(readl(ELFIN_GPIO_BASE + EXT_INT_2_CON) | (1 << 1),
-            ELFIN_GPIO_BASE + EXT_INT_2_CON);
-    writel(readl(ELFIN_GPIO_BASE + EXT_INT_2_MASK) & ~(1 << 0),
-            ELFIN_GPIO_BASE + EXT_INT_2_MASK);
-
-    irq_set_handler(IRQ_EINT16_31, isr_key, NULL);
-    irq_enable(IRQ_EINT16_31);
-
-    //udc_probe();
-    //udc_register_gadget(&dnw_gadget);
+    nand_init();
 
     while (1) {
         uart0_putc('.');

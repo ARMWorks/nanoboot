@@ -20,7 +20,8 @@
 
 inline void halt(void)
 {
-    while(1);
+    while(1)
+        ;
 }
 
 void error_halt(void);

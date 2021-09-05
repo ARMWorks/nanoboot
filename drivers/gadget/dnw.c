@@ -21,9 +21,9 @@
 
 #include <cache.h>
 #include <irq.h>
-#include <macros.h>
 
 #include <linux/errno.h>
+#include <linux/kernel.h>
 #include "linux/usb/ch9.h"
 
 #include <malloc.h>
@@ -212,7 +212,7 @@ static inline int usb_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl)
     }
 
     if (req) {
-        req->length = MIN((size_t) ctrl->wLength, req->length);
+        req->length = min_t(size_t, ctrl->wLength, req->length);
         udc->ops->queue(&udc->ep[0], req);
         return 0;
     }
@@ -244,7 +244,7 @@ static inline int usb_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl)
     }
 
     if (req) {
-        req->length = MIN((size_t) ctrl->wLength, req->length);
+        req->length = min_t(size_t, ctrl->wLength, req->length);
         udc->ops->queue(&udc->ep[0], req);
         return 0;
     }
@@ -275,7 +275,7 @@ static inline int usb_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl)
     }
 
     if (req) {
-        req->length = MIN((size_t) ctrl->wLength, req->length);
+        req->length = min_t(size_t, ctrl->wLength, req->length);
         udc->ops->queue(&udc->ep[0], req);
         return 0;
     }
@@ -298,7 +298,7 @@ static inline int vend_req_execaddr(udc_t *udc, struct usb_ctrlrequest *ctrl)
     }
 
     if (req) {
-        req->length = MIN((size_t) ctrl->wLength, req->length);
+        req->length = min_t(size_t, ctrl->wLength, req->length);
         udc->ops->queue(&udc->ep[0], req);
         return 0;
     }

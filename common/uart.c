@@ -21,7 +21,7 @@
 #include "uart.h"
 
 #include <stdint.h>
-#include <math.h>
+//#include <math.h>
 
 
 uint16_t divslot_table[] = {

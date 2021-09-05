@@ -6,6 +6,8 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [
+                "__KERNEL__",
+                "__LINUX_ARM_ARCH__=7",
                 "__UBOOT__"
             ],
             "compilerPath": "/usr/bin/arm-none-eabi-gcc",
