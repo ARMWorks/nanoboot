@@ -180,13 +180,13 @@ retry:
 		}
 
 		if (retries++ < UBI_IO_RETRIES) {
-			ubi_warn(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read only %zd bytes, retry",
+			ubi_warn(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read only %d bytes, retry",
 				 err, errstr, len, pnum, offset, read);
 			yield();
 			goto retry;
 		}
 
-		ubi_err(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read %zd bytes",
+		ubi_err(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read %d bytes",
 			err, errstr, len, pnum, offset, read);
 		dump_stack();
 

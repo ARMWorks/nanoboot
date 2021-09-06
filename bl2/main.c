@@ -20,7 +20,11 @@
 #include "uart.h"
 
 #include <linux/delay.h>
+#include <linux/mtd/partitions.h>
+#include <linux/mtd/ubi.h>
+#include <mtd.h>
 #include <nand.h>
+#include <ubi_uboot.h>
 
 #include <stdlib.h>
 
@@ -31,6 +35,19 @@ void main(void)
     uart0_puts("BL2");
 
     nand_init();
+    mtd_probe_devices();
+
+    struct mtd_info *mtd = get_nand_dev_by_index(0);
+    printf("mtd->name=%s\n", mtd->name);
+
+
+    /*const char *mtdparts = "nand0:512K(bootloader)ro,-(rootfs)";
+    struct mtd_partition *parts = NULL;
+    int len;
+    mtd_parse_partitions(mtd, &mtdparts, &parts, &len);
+    add_mtd_partitions(mtd, parts, len);
+    mtd_free_parsed_partitions(parts, len);
+    ubi_part("rootfs", NULL);*/
 
     while (1) {
         uart0_putc('.');

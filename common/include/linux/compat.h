@@ -31,10 +31,7 @@ extern struct p_current *current;
 #define __GFP_NOWARN ((gfp_t) 0)
 #define __GFP_ZERO	((__force gfp_t)0x8000u)	/* Return zeroed page on success */
 
-static inline void *kmalloc(size_t size, int flags)
-{
-	return calloc(size, 1);
-}
+void *kmalloc(size_t size, int flags);
 
 static inline void *kzalloc(size_t size, gfp_t flags)
 {

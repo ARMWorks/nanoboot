@@ -4564,9 +4564,6 @@ ident_done:
 	else
 		pr_info("%s %s\n", nand_manuf_ids[maf_idx].name,
 				type->name);
-
-	pr_info("%s %s\n", nand_manuf_ids[maf_idx].name,
-		type->name);
 #endif
 
 	pr_info("%d MiB, %s, erase size: %ld KiB, page size: %ld, OOB size: %ld\n",
