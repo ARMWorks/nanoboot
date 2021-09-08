@@ -49,6 +49,7 @@ import serial.tools.miniterm as miniterm
 key_description = miniterm.key_description
 
 # Control-key characters
+CTRL_E = '\x05'
 CTRL_H = '\x08'
 CTRL_T = '\x14'
 CTRL_Y = '\x19'
@@ -58,6 +59,7 @@ CTRL_RBRACKET = '\x1d'  # Ctrl+]
 # Command parsed from console inputs
 CMD_STOP = 1
 CMD_OUTPUT_TOGGLE = 2
+CMD_EXECUTE = 3
 
 # ANSI terminal codes (if changed, regular expressions in LineMatcher need to
 # be udpated)
@@ -87,6 +89,8 @@ TAG_CMD = 3
 
 # loader related messages
 LOADER_UART_READY = b'BL1 UART Loader READY'
+LOADER_CHECKSUM_FAIL = b'BL1 CHECKSUM FAIL'
+LOADER_CHECKSUM_OK = b'BL1 CHECKSUM OK'
 
 class StoppableThread(object):
     """
@@ -193,6 +197,7 @@ class ConsoleParser(object):
             'LF': lambda c: c.replace('\r', '\n'),
         }[eol]
         self.menu_key = CTRL_T
+        self.exec_key = CTRL_E
         self.exit_key = CTRL_RBRACKET
         self._pressed_menu_key = False
 
@@ -202,6 +207,8 @@ class ConsoleParser(object):
             ret = self._handle_menu_key(key)
         elif key == self.menu_key:
             self._pressed_menu_key = True
+        elif key == self.exec_key:
+            ret = (TAG_CMD, CMD_EXECUTE)
         elif key == self.exit_key:
             ret = (TAG_CMD, CMD_STOP)
         else:
@@ -213,6 +220,8 @@ class ConsoleParser(object):
         ret = None
         if c == self.exit_key or c == self.menu_key:  # send verbatim
             ret = (TAG_KEY, c)
+        elif c in [CTRL_E, 'e', 'E']:
+            ret = (TAG_CMD, CMD_EXECUTE)
         elif c in [CTRL_H, 'h', 'H', '?']:
             red_print(self.get_help_text())
         elif c == CTRL_Y:  # Toggle output display
@@ -315,22 +324,24 @@ class Monitor(object):
     Main difference is that all event processing happens in the main thread,
     not the worker threads.
     """
-    def __init__(self, serial_instance, make='make', eol='CRLF'):
+    def __init__(self, serial_instance, binary, load_addr, no_load, exec_addr,
+            no_exec, exec_baud, eol='CRLF'):
         super(Monitor, self).__init__()
         self.event_queue = queue.Queue()
         self.cmd_queue = queue.Queue()
         self.console = miniterm.Console()
 
         self.serial = serial_instance
+        self.binary = binary
+        self.load_addr = load_addr
+        self.no_load = no_load
+        self.exec_addr = exec_addr
+        self.no_exec = no_exec
+        self.exec_baud = exec_baud
         self.console_parser = ConsoleParser(eol)
         self.console_reader = ConsoleReader(self.console, self.event_queue,
                 self.cmd_queue, self.console_parser)
         self.serial_reader = SerialReader(self.serial, self.event_queue)
-        if not os.path.exists(make):
-            self.make = shlex.split(make)  # allow for possibility the "make"
-                                           # arg is a list of arguments
-        else:
-            self.make = make
 
         # internal state
         self._last_line_part = b''
@@ -404,6 +415,7 @@ class Monitor(object):
         while b'\n' in data:
             line, data = data.split(b'\n', 1)
             self.check_loader_trigger_before_print(line)
+            self.check_checksum_before_print(line)
             if not self._hide_bl1_text:
                 self._print(line + b'\n')
             self._hide_bl1_text = False
@@ -424,34 +436,57 @@ class Monitor(object):
         self.console_reader.start()
         self.serial_reader.start()
 
-    def run_make(self, target='all'):
-        with self:
-            if isinstance(self.make, list):
-                popen_args = self.make + [target]
-            else:
-                popen_args = [self.make, target]
-            yellow_print('\nRunning %s...' % ' '.join(popen_args))
-            p = subprocess.Popen(popen_args, env=os.environ)
-            try:
-                p.wait()
-            except KeyboardInterrupt:
-                p.wait()
-            self.output_enable(True)
-
-    def do_load(self, path):
-        if not os.path.exists(path):
+    def load(self, binary, addr=0x20000000):
+        if not os.path.exists(binary):
+            yellow_print("binary not found")
             return
         time.sleep(0.05)
-        with open(path, 'rb') as f:
-            data = f.read()
-            while data:
-                chunk, data = data[:1024], data[1024:]
+
+        checksum = 0
+        with open(binary, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            length = f.tell()
+            f.seek(0, os.SEEK_SET)
+
+            yellow_print('loading %s (0x%08x) @ 0x%08x' % (binary, length,
+                    addr))
+            self.serial.write(b'load 0x%08x @ 0x%08x\n' % (length, addr))
+
+            time.sleep(0.05)
+
+            chunk = f.read(1024)
+            while chunk:
+                for byte in chunk:
+                    checksum += byte
                 self.serial.write(chunk)
+                chunk = f.read(1024)
+
+        checksum &= 0xFFFFFFFF
+        self.serial.write(b'check 0x%08x\n' % (checksum,))
+
+    def execute(self, addr):
+        yellow_print('execute 0x%08x' % (addr,))
+        self.serial.write(b'exec 0x%08x\n' % (addr,))
+        self.serial.flush()
+        if self.exec_baud is not None:
+            self.serial.baudrate = self.exec_baud
 
     def check_loader_trigger_before_print(self, line):
-        if LOADER_UART_READY in line:
-            self.run_make()
-            self.do_load('build/debug/bl2.bin')
+        if self.binary and LOADER_UART_READY in line:
+            self.output_enable(True)
+            if self.binary and not self.no_load:
+                self.load(self.binary, self.load_addr)
+            self._hide_bl1_text = True
+
+    def check_checksum_before_print(self, line):
+        if LOADER_CHECKSUM_OK in line:
+            yellow_print('load complete, checksum OK')
+            if self.exec_addr is not None and not self.no_exec:
+                self.execute(self.exec_addr)
+            self._hide_bl1_text = True
+        elif LOADER_CHECKSUM_FAIL in line:
+            red_print('load complete, checksum FAIL')
+            self.output_enable(True)
             self._hide_bl1_text = True
 
     def output_enable(self, enable):
@@ -474,13 +509,14 @@ class Monitor(object):
             self.serial_reader.stop()
         elif cmd == CMD_OUTPUT_TOGGLE:
             self.output_toggle()
+        elif cmd == CMD_EXECUTE:
+            self.execute(self.exec_addr)
         else:
             raise RuntimeError('Bad command data %d' % (cmd))
 
 
 def main():
-    parser = argparse.ArgumentParser('loader - a serial loader for Samsung '
-            'bl1 uart loader')
+    parser = argparse.ArgumentParser('loader - a uart serial loader')
 
     parser.add_argument(
         '--port', '-p',
@@ -506,19 +542,44 @@ def main():
         help='End of line to use when sending to the serial port',
         default='CR')
 
-    bl2_arg = parser.add_argument(
-        'bl2', help='BL2 directory',
-        type=str)
+    parser.add_argument(
+        '--load-addr', help='Load address, defaults to 0x20000000',
+        type=lambda x: int(x, 0), default=0x20000000)
+
+    parser.add_argument(
+        '--no-load',
+        action='store_true',
+        help='Don\'t automatically load binary',
+        default=False)
+
+    parser.add_argument(
+        '--exec-addr', help='Exec address, defaults to --load-addr',
+        type=lambda x: int(x, 0), default=None)
+
+    parser.add_argument(
+        '--no-exec',
+        action='store_true',
+        help='Don\'t automaticaly execute binary',
+        default=False)
+
+    parser.add_argument(
+        '--exec-baud', help='Baudrate to switch to after exec',
+        type=int, default=None)
+
+    parser.add_argument(
+        'BINARY', nargs='?', help='BL2 binary, exec only if not provided',
+        type=str, default=None)
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.bl2) or not os.path.isdir(args.bl2):
-        raise argparse.ArgumentError(bl2_arg, 'not a directory')
-    os.chdir(args.bl2)
+    if args.exec_addr is None:
+        args.exec_addr = args.load_addr
 
     serial_instance = serial.serial_for_url(args.port, args.baud,
                                             do_not_open=True)
-    monitor = Monitor(serial_instance, args.make, args.eol)
+    monitor = Monitor(serial_instance, args.BINARY, args.load_addr,
+            args.no_load, args.exec_addr, args.no_exec, args.exec_baud,
+            args.eol)
 
     yellow_print('--- idf_monitor on {p.name} {p.baudrate} ---'.format(
         p=serial_instance))

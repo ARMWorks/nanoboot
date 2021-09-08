@@ -21,9 +21,9 @@
 /* BL=4, 1Chip, DDR2 Type, dynamic self refresh, force precharge,
  * dynamic power down off */
 #define DMC0_MEMCONTROL			0x00202400
-/* 256MB config, 8 banks, mapping[15:12] 0:linear, 1:linterleaved, 2:Mixed */
-#define DMC0_MEMCONFIG_0		0x20F00323
-#define DMC0_MEMCONFIG_1		0x00F00323
+/* 512MB config, 8 banks, linear */
+#define DMC0_MEMCONFIG_0		0x20E00323
+#define DMC0_MEMCONFIG_1		0x00E00323
 
 /* 7.8us * 133MHz = 1038(0x40E), 100MHz = 780(0x30C), 20MHz = 156(0x9C),
  * 10MHz = 78(0x4E) */
@@ -36,27 +36,6 @@
 
 .globl sdram_init
 sdram_init:
-	/* 2x drive strength */
-	ldr	r0, =ELFIN_GPIO_BASE
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_0DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_1DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_2DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_3DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_4DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_5DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_6DRV_SR_OFFSET]
-	ldr	r1, =0x0000AAAA
-	str	r1, [r0, #MP1_7DRV_SR_OFFSET]
-	ldr	r1, =0x00002AAA
-	str	r1, [r0, #MP1_8DRV_SR_OFFSET]
-
 	/* PHY DLL */
 	ldr	r0, =APB_DMC_0_BASE
 	ldr	r1, =0x00101000

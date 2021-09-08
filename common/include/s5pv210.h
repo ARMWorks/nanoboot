@@ -606,36 +606,90 @@
 #define TCNTO4_OFFSET					(0x40)
 #define TINT_OFFSET						(0x44)
 
-/* Fields */
-#define fTCFG0_DZONE					Fld(8,16)		/* the dead zone length (= timer 0) */
-#define fTCFG0_PRE1						Fld(8,8)		/* prescaler value for time 2,3,4 */
-#define fTCFG0_PRE0						Fld(8,0)		/* prescaler value for time 0,1 */
-#define fTCFG1_MUX4						Fld(4,16)
-/* bits */
-#define TCFG0_DZONE(x)					FInsrt((x), fTCFG0_DZONE)
-#define TCFG0_PRE1(x)					FInsrt((x), fTCFG0_PRE1)
-#define TCFG0_PRE0(x)					FInsrt((x), fTCFG0_PRE0)
-#define TCON_4_AUTO						(1 << 22)		/* auto reload on/off for Timer 4 */
-#define TCON_4_UPDATE					(1 << 21)		/* manual Update TCNTB4 */
-#define TCON_4_ONOFF					(1 << 20)		/* 0: Stop, 1: start Timer 4 */
-#define COUNT_4_ON						(TCON_4_ONOFF*1)
-#define COUNT_4_OFF						(TCON_4_ONOFF*0)
-#define TCON_3_AUTO						(1 << 19)		/* auto reload on/off for Timer 3 */
-#define TIMER3_ATLOAD_ON				(TCON_3_AUTO*1)
-#define TIMER3_ATLAOD_OFF				FClrBit(TCON, TCON_3_AUTO)
-#define TCON_3_INVERT					(1 << 18)		/* 1: Inverter on for TOUT3 */
-#define TIMER3_IVT_ON					(TCON_3_INVERT*1)
-#define TIMER3_IVT_OFF					(FClrBit(TCON, TCON_3_INVERT))
-#define TCON_3_MAN						(1 << 17)		/* manual Update TCNTB3,TCMPB3 */
-#define TIMER3_MANUP					(TCON_3_MAN*1)
-#define TIMER3_NOP						(FClrBit(TCON, TCON_3_MAN))
-#define TCON_3_ONOFF					(1 << 16)		/* 0: Stop, 1: start Timer 3 */
-#define TIMER3_ON						(TCON_3_ONOFF*1)
-#define TIMER3_OFF						(FClrBit(TCON, TCON_3_ONOFF))
-/* macros */
-#define GET_PRESCALE_TIMER4(x)			FExtr((x), fTCFG0_PRE1)
-#define GET_DIVIDER_TIMER4(x)			FExtr((x), fTCFG1_MUX4)
+/* TCFG0 register fields */
+#define TCFG0_DEAD_ZONE_SHIFT			16
+#define TCFG0_DEAD_ZONE_MASK			(0xFF<<16)
+#define TCFG0_DEAD_ZONE(_x)				((_x)<<16)
+#define TCFG0_PRESCALER1_SHIFT			8
+#define TCFG0_PRESCALER1_MASK			(0xFF<<8)
+#define TCFG0_PRESCALER1(_x)			((_x)<<8)
+#define TCFG0_PRESCALER0_SHIFT			0
+#define TCFG0_PRESCALER0_MASK			(0xFF<<0)
+#define TCFG0_PRESCALER0(_x)			((_x)<<0)
 
+/* TCFG1 register fields */
+#define TCFG1_DIV_MUX4_SHIFT			16
+#define TCFG1_DIV_MUX4_MASK				(0xF<<16)
+#define TCFG1_DIV_MUX4(_x)				((_x)<<16)
+#define TCFG1_DIV_MUX3_SHIFT			12
+#define TCFG1_DIV_MUX3_MASK				(0xF<<12)
+#define TCFG1_DIV_MUX3(_x)				((_x)<<12)
+#define TCFG1_DIV_MUX2_SHIFT			8
+#define TCFG1_DIV_MUX2_MASK				(0xF<<8)
+#define TCFG1_DIV_MUX2(_x)				((_x)<<8)
+#define TCFG1_DIV_MUX1_SHIFT			4
+#define TCFG1_DIV_MUX1_MASK				(0xF<<4)
+#define TCFG1_DIV_MUX1(_x)				((_x)<<4)
+#define TCFG1_DIV_MUX0_SHIFT			0
+#define TCFG1_DIV_MUX0_MASK				(0xF<<0)
+#define TCFG1_DIV_MUX0(_x)				((_x)<<0)
+
+#define TCFG1_DIV_MUX_SHIFT(_t)			((_t) * 4)
+#define TCFG1_DIV_MUX_MASK(_t)			(0xF << (_t))
+#define TCFG1_DIV_MUIX(_t, _x)			(_x << ((_t) * 4))
+
+#define MUX_DIV_1						0
+#define MUX_DIV_2						1
+#define MUX_DIV_4						2
+#define MUX_DIV_8						3
+#define MUX_DIV_16						4
+#define MUX_SCLK_PWM					5
+
+/* TCON register fields */
+#define TCON_TIMER4_AUTO_RELOAD			(1<<22)
+#define TCON_TIMER4_MANUAL_UPDATE		(1<<21)
+#define TCON_TIMER4_START				(1<<20)
+#define TCON_TIMER3_AUTO_RELOAD			(1<<19)
+#define TCON_TIMER3_INVERT				(1<<18)
+#define TCON_TIMER3_MANUAL_UPDATE		(1<<17)
+#define TCON_TIMER3_START				(1<<16)
+#define TCON_TIMER2_AUTO_RELOAD			(1<<15)
+#define TCON_TIMER2_INVERT				(1<<14)
+#define TCON_TIMER2_MANUAL_UPDATE		(1<<13)
+#define TCON_TIMER2_START				(1<<12)
+#define TCON_TIMER1_AUTO_RELOAD			(1<<11)
+#define TCON_TIMER1_INVERT				(1<<10)
+#define TCON_TIMER1_AMANUAL_UPDATE		(1<<9)
+#define TCON_TIMER1_START				(1<<8)
+#define TCON_DEAD_ZONE_ENABLE			(1<<4)
+#define TCON_TIMER0_AUTO_RELOAD			(1<<3)
+#define TCON_TIMER0_INVERT				(1<<2)
+#define TCON_TIMER0_MANUAL_UPDATE		(1<<1)
+#define TCON_TIMER0_START				(1<<0)
+
+#define TCON_TIMER_AUTO_RELOAD(_x) \
+		(1 << ((_x) == 0 ? (_x) + 3 : ((_x * 4) + 7)))
+#define TCON_TIMER_INVERT(_x) \
+		(1 << ((_x) == 0 ? (_x) + 2 : ((_x * 4) + 6)))
+#define TCON_TIMER_MANUAL_UPDATE(_x) \
+		(1 << ((_x) == 0 ? (_x) + 1 : ((_x * 4) + 5)))
+#define TCON_TIMER_START(_x) \
+		(1 << ((_x) == 0 ? (_x) : ((_x * 4) + 4)))
+
+/* TINT register fields */
+#define TINT_TIMER4_STATUS				(1<<9)
+#define TINT_TIMER3_STATUS				(1<<8)
+#define TINT_TIMER2_STATUS				(1<<7)
+#define TINT_TIMER1_STATUS				(1<<6)
+#define TINT_TIMER0_STATUS				(1<<5)
+#define TINT_TIMER4_INT_ENABLE			(1<<4)
+#define TINT_TIMER3_INT_ENABLE			(1<<3)
+#define TINT_TIMER2_INT_ENABLE			(1<<2)
+#define TINT_TIMER1_INT_ENABLE			(1<<1)
+#define TINT_TIMER0_INT_ENABLE			(1<<0)
+
+#define TINT_TIMER_STATUS(_x)			(1<<((_x)+5))
+#define TINT_TIMER_ENABLE(_x)			(1<<(_x))
 
 #define MP01CON_OFFSET					(0x2E0)
 #define MP01DAT_OFFSET					(0x2E4)
@@ -671,7 +725,6 @@
 #define MP07DRV_SR_OFFSET				(0x3AC)
 #define MP07CONPDN_OFFSET				(0x3B0)
 #define MP07PUDPDN_OFFSET				(0x3B4)
-
 
 /*
  * Nand flash controller
@@ -775,26 +828,6 @@
 #define NFECCCONECC4					(ELFIN_NAND_ECC_BASE+NFECCCONECC4_OFFSET)
 #define NFECCCONECC5					(ELFIN_NAND_ECC_BASE+NFECCCONECC5_OFFSET)
 #define NFECCCONECC6					(ELFIN_NAND_ECC_BASE+NFECCCONECC6_OFFSET)
-
-
-#define NFCONF_REG						__REG(ELFIN_NAND_BASE+NFCONF_OFFSET)
-#define NFCONT_REG						__REG(ELFIN_NAND_BASE+NFCONT_OFFSET)
-#define NFCMD_REG						__REG(ELFIN_NAND_BASE+NFCMMD_OFFSET)
-#define NFADDR_REG						__REG(ELFIN_NAND_BASE+NFADDR_OFFSET)
-#define NFDATA_REG						__REG(ELFIN_NAND_BASE+NFDATA_OFFSET)
-#define NFDATA8_REG						__REGb(ELFIN_NAND_BASE+NFDATA_OFFSET)
-#define NFMECCDATA0_REG					__REG(ELFIN_NAND_BASE+NFMECCDATA0_OFFSET)
-#define NFMECCDATA1_REG					__REG(ELFIN_NAND_BASE+NFMECCDATA1_OFFSET)
-#define NFSECCDATA0_REG					__REG(ELFIN_NAND_BASE+NFSECCDATA0_OFFSET)
-#define NFSBLK_REG						__REG(ELFIN_NAND_BASE+NFSBLK_OFFSET)
-#define NFEBLK_REG						__REG(ELFIN_NAND_BASE+NFEBLK_OFFSET)
-#define NFSTAT_REG						__REG(ELFIN_NAND_BASE+NFSTAT_OFFSET)
-#define NFESTAT0_REG					__REG(ELFIN_NAND_BASE+NFESTAT0_OFFSET)
-#define NFESTAT1_REG					__REG(ELFIN_NAND_BASE+NFESTAT1_OFFSET)
-#define NFMECC0_REG						__REG(ELFIN_NAND_BASE+NFMECC0_OFFSET)
-#define NFMECC1_REG						__REG(ELFIN_NAND_BASE+NFMECC1_OFFSET)
-#define NFSECC_REG						__REG(ELFIN_NAND_BASE+NFSECC_OFFSET)
-#define NFMLCBITPT_REG					__REG(ELFIN_NAND_BASE+NFMLCBITPT_OFFSET)
 
 #define NFCONF_ECC_MLC					(1<<24)
 

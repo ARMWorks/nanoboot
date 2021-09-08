@@ -35,12 +35,12 @@ void timer_init(void)
     writel(readl(timer_base + TCFG1_OFFSET) & ~0x000F0000,
             timer_base + TCFG1_OFFSET);
     writel(0xFFFFFFFF, timer_base + TCNTB4_OFFSET);
-    writel((readl(timer_base + TCON_OFFSET) & ~0x00F000000) | TCON_4_UPDATE,
-            timer_base + TCON_OFFSET);
+    writel((readl(timer_base + TCON_OFFSET) & ~0x00F000000) |
+            TCON_TIMER4_MANUAL_UPDATE, timer_base + TCON_OFFSET);
     writel(readl(timer_base + TCON_OFFSET) & ~0x00F00000,
             timer_base + TCON_OFFSET);
-    writel(readl(timer_base + TCON_OFFSET) | TCON_4_AUTO | TCON_4_ONOFF,
-            timer_base + TCON_OFFSET);
+    writel(readl(timer_base + TCON_OFFSET) | TCON_TIMER4_AUTO_RELOAD |
+            TCON_TIMER4_START, timer_base + TCON_OFFSET);
 
     reset_value = 0;
     lastinc = timer_get_us_down();
