@@ -27,28 +27,18 @@ _entry:
 	.globl _ivt
 _ivt:
 	b _entry
-	ldr pc, =exc_undef
-	ldr pc, =exc_swi
-	ldr pc, =exc_pabort
-	ldr pc, =exc_dabort
-	ldr pc, =error_halt
-	ldr pc, =exc_irq
-	ldr pc, =exc_fiq
+	b exc_undef
+	b exc_swi
+	b exc_pabort
+	b exc_dabort
+	b error_halt
+	b exc_irq
+	b exc_fiq
 
 	.ltorg
 
 	.section .text
 _startup:
-    /* Switch to SVC mode */
-    mrs r0, cpsr
-    bic r0, r0, #0x1f
-    orr r0, r0, #0xd3
-    msr cpsr, r0
-
-	/* Stack in SRAM */
-	ldr	sp, =0xD0037D80
-    mov fp, #0
-
 	bl clock_init
 	bl dram_init
 
@@ -62,14 +52,14 @@ _startup:
 	beq reloc_done
 	bgt 2f
 
-1:	ldmia r4!, {r0}
-	stmia r6!, {r0}
+1:	ldmia r4!, {r0-r3}
+	stmia r6!, {r0-r3}
 	cmp r4, r5
 	blt 1b
 	b 3f
 
-2:	ldmdb r5!, {r0}
-	stmdb r7!, {r0}
+2:	ldmdb r5!, {r0-r3}
+	stmdb r7!, {r0-r3}
 	cmp r4, r5
 	blt 2b
 
@@ -93,6 +83,7 @@ clear_bss:
 	ble 1b
 2:
 
+	bl uart0_init
 	bl irq_init
 	bl timer_init
 
