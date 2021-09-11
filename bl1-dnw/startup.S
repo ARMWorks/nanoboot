@@ -49,7 +49,7 @@ _startup:
 	subs r8, r7, r6							@ r8: size
 	add r5, r8, r4
 
-	beq reloc_done
+	beq 3f
 	bgt 2f
 
 1:	ldmia r4!, {r0-r3}
@@ -65,21 +65,26 @@ _startup:
 
 3:	bl icache_invalidate
 	bl icache_enable
-	ldr pc, =reloc_done
 
-reloc_done:
-	/* Stack in SDRAM */
+	/* Jump to relocation */
+	ldr pc, =4f
+4:
+
+	/* Stack in DRAM */
 	ldr sp, =__image_copy_start
 	add sp, sp, #0x00100000
 
 clear_bss:
-	ldr r0, =_sbss
-	ldr r1, =_ebss
-	cmp r0, r1
-	bge 2f
+	mov r0, #0
+	mov r1, #0
 	mov r2, #0
-1:	stmia r0!, {r2}
-	cmp r0, r1
+	mov r3, #0
+	ldr r4, =_sbss
+	ldr r5, =_ebss
+	cmp r4, r5
+	bge 2f
+1:	stmia r4!, {r0-r3}
+	cmp r4, r5
 	ble 1b
 2:
 

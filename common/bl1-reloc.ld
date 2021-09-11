@@ -77,12 +77,13 @@ SECTIONS
 
   .bss (NOLOAD) :
   {
-    . = ALIGN(8);
+    . = ALIGN(16);
     _sbss = .;         /* define a global symbol at bss start */
     __bss_start__ = _sbss;
     *(.bss)
     *(.bss*)
     *(COMMON)
+    . = ALIGN(16);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   }
