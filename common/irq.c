@@ -28,17 +28,7 @@
 #include "uart.h"
 
 
-typedef struct exc_vect_t exc_vect_t;
-struct exc_vect_t {
-    void (*reset)(void);
-    void (*undef)(void);
-    void (*swi)(void);
-    void (*pabort)(void);
-    void (*dabort)(void);
-    void (*reserved)(void);
-    void (*irq)(void);
-    void (*fiq)(void);
-} __attribute__((packed));
+extern void *_ivt;
 
 static const uint32_t vic_irqstatus[] = {
     ELFIN_VIC0_BASE_ADDR + VIC_IRQSTATUS_OFFSET,
@@ -70,35 +60,35 @@ bool disable_irqs(void)
 }
 
 __attribute__((target("arm"), isr("UNDEF")))
-static void exc_undef(void)
+void exc_undef(void)
 {
     uart0_puts("undef");
     error_halt();
 }
 
 __attribute__((target("arm"), isr("SWI")))
-static void exc_swi(void)
+void exc_swi(void)
 {
     uart0_puts("swi");
     error_halt();
 }
 
 __attribute__((target("arm"), isr("ABORT")))
-static void exc_pabort(void)
+void exc_pabort(void)
 {
     uart0_puts("pabort");
     error_halt();
 }
 
 __attribute__((target("arm"), isr("ABORT")))
-static void exc_dabort(void)
+void exc_dabort(void)
 {
     uart0_puts("dabort");
     error_halt();
 }
 
 __attribute__((target("arm"), isr("IRQ")))
-static void exc_irq(void)
+void exc_irq(void)
 {
     void (*isr)(uint32_t irq, void *pv) = NULL;
 
@@ -117,7 +107,7 @@ static void exc_irq(void)
 }
 
 __attribute__((target("arm"), isr("FIQ")))
-static void exc_fiq(void)
+void exc_fiq(void)
 {
     uart0_puts("fiq");
     error_halt();
@@ -137,27 +127,7 @@ void irq_init(void)
     writel(0x00000000, ELFIN_VIC2_BASE_ADDR + VIC_ADDRESS_OFFSET);
     writel(0x00000000, ELFIN_VIC3_BASE_ADDR + VIC_ADDRESS_OFFSET);
 
-    uint32_t *branch = (void *) 0xFFFF0000;
-    for (int i = 0; i < 8; i++) {
-        *(branch++) = 0xE59FFFF8;
-    }
-
-    exc_vect_t *address = (void *) 0xFFFF1000;
-    address->reset = error_halt;
-    address->undef = exc_undef;
-    address->swi = exc_swi;
-    address->pabort = exc_pabort;
-    address->dabort = exc_dabort;
-    address->reserved = error_halt;
-    address->irq = exc_irq;
-    address->fiq = exc_fiq;
-
-    /* Set high isrs */
-    uint32_t reg;
-    reg = get_sctlr();
-    reg |= SCTLR_V;
-    set_sctlr(reg);
-
+    set_vbar((uint32_t) &_ivt);
     enable_irqs();
 }
 

@@ -18,7 +18,7 @@
 
 #include "config.h"
 
-ENTRY(entry)
+ENTRY(_entry)
 
 MEMORY
 {

@@ -19,8 +19,27 @@
 #include "config.h"
 
 .arm
-.globl entry
-entry:
+
+.global _entry
+_entry:
+	bl _startup
+
+.balign 32
+.globl _ivt
+_ivt:
+	ldr pc, =_startup
+	ldr pc, =exc_undef
+	ldr pc, =exc_swi
+	ldr pc, =exc_pabort
+	ldr pc, =exc_dabort
+	ldr pc, =error_halt
+	ldr pc, =exc_irq
+	ldr pc, =exc_fiq
+
+.ltorg
+
+.globl _startup
+_startup:
 	ldr r0, =NANOBOOT_STACK_TOP
 	/* Setup FIQ stack */
 	msr cpsr_c, #0xD1
@@ -62,11 +81,6 @@ clear_bss:
 
 	bl icache_disable
 	bl icache_invalidate
-
-	bl mmu_init
-	bl mmu_load
-	bl tlb_invalidate
-	bl mmu_enable
 	bl icache_enable
 
 	bl irq_init

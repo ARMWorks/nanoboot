@@ -954,13 +954,9 @@ static int udc_ep_enable(udc_ep_t *ep,
 
 static int udc_ep_disable(udc_ep_t *ep)
 {
-    // bool reenable_irqs = disable_irqs();
     udc_nuke(ep, -ESHUTDOWN);
     ep->desc = NULL;
     ep->stopped = true;
-    // if (reenable_irqs) {
-    //     enable_irqs();
-    // }
 
     return 0;
 }

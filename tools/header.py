@@ -22,27 +22,47 @@ import struct
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Samsung bl1 header fill tool')
-    parser.add_argument('-p', default=0, type=lambda x: int(x, 0),
-            help='padding, none by default', metavar='PADDING', dest='padding')
-    parser.add_argument('FILE', type=FileType('rb+', 0), help='file to modify')
+    parser.add_argument('-p', default=16<<10, type=lambda x: int(x, 0),
+            help='padding, 16K default', metavar='PADDING', dest='padding')
+    parser.add_argument('INPUT', type=FileType('rb', 0), help='input file')
+    parser.add_argument('OUTPUT', type=FileType('wb+', 0), help='output file')
     args = parser.parse_args()
 
-    f = args.FILE
+    header = struct.Struct('<IIII')
+    fill = b'\xFF'
 
-    f.seek(0, os.SEEK_END)
-    size = f.tell()
-    if size < args.padding:
-        f.write(b'\xFF' * (args.padding - size))
-        size = args.padding
+    inf = args.INPUT
+    outf = args.OUTPUT
 
-    f.seek(16, os.SEEK_SET)
+    inf.seek(0, os.SEEK_END)
+    size = inf.tell()
+    inf.seek(16, os.SEEK_SET)
+
+    pad = 0
+    if size + header.size < args.padding:
+        pad = args.padding - size
+
     checksum = 0
-    byte = f.read(1)
-    while byte != b'':
-        checksum += ord(byte)
-        byte = f.read(1)
-    checksum %= 0xFFFFFFFF
-    header = struct.pack('<IIII', size, 0, checksum, 0)
-    f.seek(0, os.SEEK_SET)
-    f.write(header)
-    f.close()
+    length = header.size
+    chunk = inf.read(1024)
+    while chunk:
+        for byte in chunk:
+            checksum += byte
+        length += len(chunk)
+        chunk = inf.read(1024)
+
+    checksum += ord(fill) * pad
+    length += pad
+
+    outf.write(header.pack(length, 0, checksum & 0xFFFFFFFF, 0))
+
+    inf.seek(16, os.SEEK_SET)
+    chunk = inf.read(1024)
+    while chunk:
+        outf.write(chunk)
+        chunk = inf.read(1024)
+
+    outf.write(fill * pad)
+
+    inf.close()
+    outf.close()

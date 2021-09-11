@@ -16,46 +16,90 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+	.arm
+	.section .text.entry
+	.globl _entry
+_entry:
+	sub r4, pc, #24
+	b _startup
 
-.arm
-.globl entry
-entry:
+	.section .text.ivt
+	.globl _ivt
+_ivt:
+	b _entry
+	ldr pc, =exc_undef
+	ldr pc, =exc_swi
+	ldr pc, =exc_pabort
+	ldr pc, =exc_dabort
+	ldr pc, =error_halt
+	ldr pc, =exc_irq
+	ldr pc, =exc_fiq
+
+	.ltorg
+
+	.section .text
+_startup:
     /* Switch to SVC mode */
     mrs r0, cpsr
     bic r0, r0, #0x1f
     orr r0, r0, #0xd3
     msr cpsr, r0
 
-	ldr	sp, =0xD0037D80 /* SRAM SVC stack */
-    mov fp, #0 /* no previous frame, so fp=0 */
+	/* Stack in SRAM */
+	ldr	sp, =0xD0037D80
+    mov fp, #0
 
-	bl sdram_init
+	bl clock_init
+	bl dram_init
+
+	/* Relocate */							@ r4: current start
+											@ r5: current end
+	ldr r6, =__image_copy_start				@ r6: desired start
+	ldr r7, =__image_copy_end				@ r7: desired end
+	subs r8, r7, r6							@ r8: size
+	add r5, r8, r4
+
+	beq reloc_done
+	bgt 2f
+
+1:	ldmia r4!, {r0}
+	stmia r6!, {r0}
+	cmp r4, r5
+	blt 1b
+	b 3f
+
+2:	ldmdb r5!, {r0}
+	stmdb r7!, {r0}
+	cmp r4, r5
+	blt 2b
+
+3:	bl icache_invalidate
+	bl icache_enable
+	ldr pc, =reloc_done
+
+reloc_done:
+	/* Stack in SDRAM */
+	ldr sp, =__image_copy_start
+	add sp, sp, #0x00100000
 
 clear_bss:
 	ldr r0, =_sbss
 	ldr r1, =_ebss
-	mov r2, #0
 	cmp r0, r1
 	bge 2f
-1:  str r2, [r0]
-    add r0, r0, #4
+	mov r2, #0
+1:	stmia r0!, {r2}
 	cmp r0, r1
 	ble 1b
 2:
 
-	bl icache_enable
-	bl mmu_init
-	bl mmu_load
-	bl tlb_invalidate
-	bl mmu_enable
-
-	bl clock_init
 	bl irq_init
 	bl timer_init
 
-	bl main
+	ldr r0, =main
+	blx r0
 
-.globl error_halt
+	.globl error_halt
 error_halt:
 	/* set LED GPIOs as output */
 	ldr r2, =0xE0200280
@@ -74,4 +118,4 @@ error_halt:
 	eor r1, r1, #0xf
 	b 1b
 
-.ltorg
+	.ltorg

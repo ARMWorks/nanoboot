@@ -22,6 +22,7 @@
 #include <cache.h>
 #include <irq.h>
 #include <macros.h>
+#include <halt.h>
 
 #include <linux/errno.h>
 #include "linux/usb/ch9.h"
@@ -33,32 +34,46 @@
 
 
 #define CHUNK_MAX_SIZE (16 * 1024)
-#define NUM_ENDPOINTS (2)
-#define NUM_STRING_DESC (3)
-#define NUM_CONFIG_DESC (1)
+#define NUM_STRING_DESC 3
+#define NUM_CONFIG_DESC 1
+#define NUM_IF 2
+#define NUM_IF0_EP 2
+#define NUM_IF1_EP 2
 
-enum {
-    VEND_REQ_GET_EXECADDR,
-    VEND_REQ_SET_EXECADDR,
+typedef struct dnw_data dnw_data_t;
+typedef struct adv_data adv_data_t;
+typedef struct gadget_priv gadget_priv_t;
+
+struct dnw_data {
+    uint8_t chunk[CHUNK_MAX_SIZE];
+    size_t load_addr;
+    size_t length;
+    size_t offset;
+    unsigned first_chunk : 1;
 };
 
+typedef enum adv_state {
+    ADV_STATE_COMMAND,
+    ADV_STATE_RX_DATA,
+    ADV_STATE_TX_DATA,
+} adv_state_t;
 
-typedef struct gadget_priv gadget_priv_t;
+struct adv_data {
+    uint8_t buf[256];
+    adv_state_t state;
+    uint32_t checksum;
+};
+
 struct gadget_priv {
-    uint8_t chunk[CHUNK_MAX_SIZE];
     uint16_t config;
-    uint32_t chunk_num;
-    void *loadaddr;
-    void *execaddr;
-    uint32_t length;
-    uint32_t offset;
+    dnw_data_t dnw;
+    adv_data_t adv;
 };
 
 /* functions */
 static inline int usb_req_desc(udc_t *udc, struct usb_ctrlrequest *ctrl);
 static inline int usb_req_config(udc_t *udc, struct usb_ctrlrequest *ctrl);
 static inline int usb_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl);
-static inline int vend_req_execaddr(udc_t *udc, struct usb_ctrlrequest *ctrl);
 static inline void set_config(udc_t *udc, int config);
 static void configured(udc_t *udc);
 
@@ -66,7 +81,9 @@ static void configured(udc_t *udc);
 struct usb_device_config_descriptor {
     struct usb_config_descriptor cfg;
     struct usb_interface_descriptor if0;
-    struct usb_endpoint_descriptor ep[];
+    struct usb_endpoint_descriptor if0_ep[NUM_IF0_EP];
+    struct usb_interface_descriptor if1;
+    struct usb_endpoint_descriptor if1_ep[NUM_IF1_EP];
 } __attribute__((packed));
 
 static const struct usb_device_descriptor sec_dths_dev;
@@ -77,7 +94,7 @@ static const struct usb_qualifier_descriptor sec_dtfs_qual;
 static struct usb_device_config_descriptor sec_dtfs_config;
 static const struct usb_string_descriptor *sec_dt_string[];
 
-int bind(udc_t *udc)
+static int bind(udc_t *udc)
 {
     gadget_priv_t *priv;
 
@@ -91,14 +108,14 @@ int bind(udc_t *udc)
     return 0;
 }
 
-void unbind(udc_t *udc)
+static void unbind(udc_t *udc)
 {
     gadget_priv_t *priv = udc->gadget_data;
     free(priv);
     udc->gadget_data = NULL;
 }
 
-int setup(udc_t *udc, struct usb_ctrlrequest *ctrl)
+static int setup(udc_t *udc, struct usb_ctrlrequest *ctrl)
 {
 
     switch (ctrl->bRequestType & USB_TYPE_MASK) {
@@ -123,16 +140,6 @@ int setup(udc_t *udc, struct usb_ctrlrequest *ctrl)
                 break;
             }
             return usb_req_iface(udc, ctrl);
-        }
-
-    case USB_TYPE_VENDOR:
-        switch (ctrl->bRequest) {
-        case VEND_REQ_GET_EXECADDR:
-        case VEND_REQ_SET_EXECADDR:
-            if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_DEVICE) {
-                break;
-            }
-            return vend_req_execaddr(udc, ctrl);
         }
     }
 
@@ -283,55 +290,41 @@ static inline int usb_req_iface(udc_t *udc, struct usb_ctrlrequest *ctrl)
     return -1;
 }
 
-static inline int vend_req_execaddr(udc_t *udc, struct usb_ctrlrequest *ctrl)
-{
-    gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
-    udc_req_t *req = NULL;
-
-    switch (ctrl->bRequest) {
-    case VEND_REQ_GET_EXECADDR:
-    case VEND_REQ_SET_EXECADDR:
-        req = udc->ops->alloc_req(&udc->ep[0]);
-        req->buf = &priv->execaddr;
-        req->length = sizeof(priv->execaddr);
-        break;
-    }
-
-    if (req) {
-        req->length = MIN((size_t) ctrl->wLength, req->length);
-        udc->ops->queue(&udc->ep[0], req);
-        return 0;
-    }
-
-    return -1;
-}
-
 static inline void set_config(udc_t *udc, int config)
 {
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
-    struct usb_endpoint_descriptor *desc[NUM_ENDPOINTS];
+    struct usb_endpoint_descriptor *desc;
 
     priv->config = config;
 
-    if (config == 0) {
-        for (int i = 0; i < NUM_ENDPOINTS; i++) {
-            udc->ops->ep_disable(&udc->ep[i]);
-        }
-    } else if (config == 1) {
-        for (int i = 0; i < NUM_ENDPOINTS; i++) {
+    if (config == 1) {
+        for (int i = 0; i < NUM_IF0_EP; i++) {
             if (udc->speed == USB_SPEED_HIGH) {
-                desc[i] = &sec_dths_config.ep[i];
+                desc = &sec_dths_config.if0_ep[i];
             } else {
-                desc[i] = &sec_dtfs_config.ep[i];
+                desc = &sec_dtfs_config.if0_ep[i];
             }
-            udc->ep[i + 1].addr = desc[i]->bEndpointAddress;
-            udc->ops->ep_enable(&udc->ep[1 + 1], desc[i]);
+            udc->ep[i + 1].addr = desc->bEndpointAddress;
+            udc->ops->ep_enable(&udc->ep[1 + 1], desc);
+        }
+        for (int i = NUM_IF0_EP + 0; i < NUM_IF0_EP + NUM_IF1_EP; i++) {
+            if (udc->speed == USB_SPEED_HIGH) {
+                desc = &sec_dths_config.if1_ep[i];
+            } else {
+                desc = &sec_dtfs_config.if1_ep[i];
+            }
+            udc->ep[i + 1].addr = desc->bEndpointAddress;
+            udc->ops->ep_enable(&udc->ep[1 + 1], desc);
         }
         configured(udc);
+    } else {
+        for (int i = 0; i < NUM_IF0_EP + NUM_IF1_EP; i++) {
+            udc->ops->ep_disable(&udc->ep[i]);
+        }
     }
 }
 
-static void ep2_complete(udc_ep_t *ep, udc_req_t *req)
+static void dnw_rx_complete(udc_ep_t *ep, udc_req_t *req)
 {
     udc_t *udc = ep->udc;
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
@@ -341,50 +334,133 @@ static void ep2_complete(udc_ep_t *ep, udc_req_t *req)
         return;
     }
 
-    if (priv->chunk_num == 0 && req->actual >= 10) {
-        memcpy(&priv->loadaddr, priv->chunk, sizeof(priv->loadaddr));
-        memcpy(&priv->length, priv->chunk + 4, sizeof(priv->length));
-        priv->length -= 10;
-        memcpy(priv->loadaddr, priv->chunk + 8, req->actual - 8);
-        priv->offset = req->actual - 8;
+    if (priv->dnw.first_chunk && req->actual >= 10) {
+        priv->dnw.load_addr = *(uint32_t *) req->buf;
+        priv->dnw.length = *(uint32_t *) (req->buf + 4);
+        priv->dnw.length -= 8;
+        memcpy((void *) priv->dnw.load_addr, req->buf + 8, req->actual - 8);
+        priv->dnw.offset = req->actual - 8;
+        priv->dnw.first_chunk = false;
     } else {
-        memcpy(priv->loadaddr + priv->offset, priv->chunk, req->actual);
-        priv->offset += req->actual;
+        memcpy((void *) priv->dnw.load_addr + priv->dnw.offset, req->buf,
+                req->actual);
+        priv->dnw.offset += req->actual;
     }
 
-    if (priv->offset >= priv->length) {
+    if (priv->dnw.offset >= priv->dnw.length) {
         udc->ops->free_req(ep, req);
-
         udc_register_gadget(NULL);
         disable_irqs();
         icache_invalidate();
-        if (priv->execaddr) {
-            ((void (*)(void))priv->execaddr)();
-        } else {
-            ((void (*)(void))priv->loadaddr)();
-        }
+        ((void (*)(void)) priv->dnw.load_addr)();
     }
 
-    priv->chunk_num++;
     req->actual = 0;
     udc->ops->queue(ep, req);
+}
+
+static void adv_rx_complete(udc_ep_t *ep, udc_req_t *req)
+{
+    udc_t *udc = ep->udc;
+    gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
+    char c, *p, *argv[3];
+    int argc;
+    size_t address, length, checksum;
+
+    switch (priv->adv.state) {
+    case ADV_STATE_COMMAND:
+        length = MIN(req->length - 1, req->actual);
+        ((uint8_t *) req->buf)[length] = '\0';
+        p = req->buf;
+        while (*p && *p == ' ') {
+            p++;
+        }
+        c = ' ';
+        for (argc = 0; argc < 3 && c == ' '; argc++) {
+            argv[argc] = p;
+            while (*p && *p != ' ') {
+                p++;
+            }
+            c = *p;
+            *p = '\0';
+            while (*p && *p == ' ') {
+                p++;
+            }
+        }
+        if (argc == 0) {
+            return;
+        }
+
+        if (strcasecmp("memwrite", argv[0]) == 0 && argc == 2) {
+            priv->adv.state = ADV_STATE_RX_DATA;
+            address = strtoul(argv[1], NULL, 0);
+            req->buf = (void *) address;
+            req->actual = 0;
+            udc->ops->queue(ep, req);
+        } else if (strcasecmp("memread", argv[0]) == 0 && argc == 2) {
+            priv->adv.state = ADV_STATE_TX_DATA;
+            address = strtoul(argv[1], NULL, 0);
+            length = strtoul(argv[2], NULL, 0);
+            udc_req_t *newreq = udc->ops->alloc_req(&udc->ep[3]);
+            newreq->buf = (void *) address;
+            newreq->length = length;
+            udc->ops->queue(&udc->ep[3], newreq);
+        } else if (strcasecmp("checksum", argv[0]) == 0 && argc == 3) {
+            priv->adv.state = ADV_STATE_TX_DATA;
+            address = strtoul(argv[1], NULL, 0);
+            length = strtoul(argv[2], NULL, 0);
+            checksum = 0;
+            while (length--) {
+                checksum += *((uint8_t *) address++);
+            }
+            udc_req_t *newreq = udc->ops->alloc_req(&udc->ep[3]);
+            newreq->buf = priv->adv.buf;
+            newreq->length = sprintf(newreq->buf, "0x%08x", checksum);
+            udc->ops->queue(&udc->ep[3], newreq);
+        } else if (strcasecmp("execute", argv[0]) == 0 && argc == 2) {
+            address = strtoul(argv[0], NULL, 0);
+            udc->ops->free_req(ep, req);
+            udc_register_gadget(NULL);
+            disable_irqs();
+            icache_invalidate();
+            ((void (*)(void)) address)();
+            error_halt();
+        }
+        break;
+
+    case ADV_STATE_RX_DATA:
+        priv->adv.state = ADV_STATE_COMMAND;
+        req->buf = priv->adv.buf;
+        req->actual = 0;
+        udc->ops->queue(ep, req);
+        break;
+
+    default:
+        break;
+    }
 }
 
 static void configured(udc_t *udc)
 {
     gadget_priv_t *priv = (gadget_priv_t *) udc->gadget_data;
 
-    if (list_empty(&udc->ep[2].queue)) {
-        udc_req_t *req = udc->ops->alloc_req(&udc->ep[2]);
-        req->buf = priv->chunk;
-        req->length = sizeof(priv->chunk);
-        req->complete = ep2_complete;
-        udc->ops->queue(&udc->ep[2], req);
-    }
+    /* DNW OUT ep */
+    udc_req_t *req = udc->ops->alloc_req(&udc->ep[2]);
+    req->buf = priv->dnw.chunk;
+    req->length = sizeof(priv->dnw.chunk);
+    req->complete = dnw_rx_complete;
+    priv->dnw.first_chunk = true;
+    udc->ops->queue(&udc->ep[2], req);
+
+    req = udc->ops->alloc_req(&udc->ep[4]);
+    req->buf = priv->adv.buf;
+    req->length = sizeof(priv->adv.buf);
+    req->complete = adv_rx_complete;
+    udc->ops->queue(&udc->ep[4], req);
 }
 
 #define MANUFACTURER_STRING u"Jeff Kent <jeff@jkent.net>"
-#define PRODUCT_STRING u"Nanoboot DNW"
+#define PRODUCT_STRING u"SAMSUNG DNW + Nanoboot"
 
 /* High speed descriptors */
 __attribute__((aligned(4)))
@@ -406,7 +482,7 @@ static const struct usb_qualifier_descriptor sec_dths_qual = {
     .bDescriptorType    = USB_DT_DEVICE_QUALIFIER,
     .bcdUSB             = 0x0200,
     .bMaxPacketSize0    = 8,
-    .bNumConfigurations = 1,
+    .bNumConfigurations = NUM_CONFIG_DESC,
 };
 
 __attribute__((aligned(4)))
@@ -416,8 +492,10 @@ static struct usb_device_config_descriptor sec_dths_config = {
         .bDescriptorType     = USB_DT_CONFIG,
         .wTotalLength        = USB_DT_CONFIG_SIZE +
                                USB_DT_INTERFACE_SIZE +
+                               (USB_DT_ENDPOINT_SIZE * 2) +
+                               USB_DT_INTERFACE_SIZE +
                                (USB_DT_ENDPOINT_SIZE * 2),
-        .bNumInterfaces      = 1,
+        .bNumInterfaces      = NUM_IF,
         .bConfigurationValue = 1,
         .bmAttributes        = USB_CONFIG_ATT_ONE |
                                USB_CONFIG_ATT_SELFPOWER,
@@ -426,7 +504,7 @@ static struct usb_device_config_descriptor sec_dths_config = {
         .bLength             = USB_DT_INTERFACE_SIZE,
         .bDescriptorType     = USB_DT_INTERFACE,
         .bInterfaceNumber    = 0,
-        .bNumEndpoints       = 2,
+        .bNumEndpoints       = NUM_IF0_EP,
         .bInterfaceClass     = 255,
     },
     {
@@ -441,6 +519,29 @@ static struct usb_device_config_descriptor sec_dths_config = {
             .bLength             = USB_DT_ENDPOINT_SIZE,
             .bDescriptorType     = USB_DT_ENDPOINT,
             .bEndpointAddress    = 2 | USB_DIR_OUT,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 512,
+        },
+    },
+    .if1 = {
+        .bLength             = USB_DT_INTERFACE_SIZE,
+        .bDescriptorType     = USB_DT_INTERFACE,
+        .bInterfaceNumber    = 1,
+        .bNumEndpoints       = NUM_IF1_EP,
+        .bInterfaceClass     = 255,
+    },
+    {
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 3 | USB_DIR_IN,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 512,
+        },
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 4 | USB_DIR_OUT,
             .bmAttributes        = USB_ENDPOINT_XFER_BULK,
             .wMaxPacketSize      = 512,
         },
@@ -467,7 +568,7 @@ static const struct usb_qualifier_descriptor sec_dtfs_qual = {
     .bDescriptorType    = USB_DT_DEVICE_QUALIFIER,
     .bcdUSB             = 0x0200,
     .bMaxPacketSize0    = 64,
-    .bNumConfigurations = 1,
+    .bNumConfigurations = NUM_CONFIG_DESC,
 };
 
 __attribute__((aligned(4)))
@@ -476,6 +577,8 @@ static struct usb_device_config_descriptor sec_dtfs_config = {
         .bLength             = USB_DT_CONFIG_SIZE,
         .bDescriptorType     = USB_DT_CONFIG,
         .wTotalLength        = USB_DT_CONFIG_SIZE + USB_DT_INTERFACE_SIZE +
+                               (USB_DT_ENDPOINT_SIZE * 2) +
+                               USB_DT_INTERFACE_SIZE +
                                (USB_DT_ENDPOINT_SIZE * 2),
         .bNumInterfaces      = 1,
         .bConfigurationValue = 1,
@@ -486,7 +589,29 @@ static struct usb_device_config_descriptor sec_dtfs_config = {
         .bLength             = USB_DT_INTERFACE_SIZE,
         .bDescriptorType     = USB_DT_INTERFACE,
         .bInterfaceNumber    = 0,
-        .bNumEndpoints       = 2,
+        .bNumEndpoints       = NUM_IF0_EP,
+    },
+    {
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 1 | USB_DIR_IN,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 64,
+        },
+        {
+            .bLength             = USB_DT_ENDPOINT_SIZE,
+            .bDescriptorType     = USB_DT_ENDPOINT,
+            .bEndpointAddress    = 2 | USB_DIR_OUT,
+            .bmAttributes        = USB_ENDPOINT_XFER_BULK,
+            .wMaxPacketSize      = 64,
+        },
+    },
+    .if1 = {
+        .bLength             = USB_DT_INTERFACE_SIZE,
+        .bDescriptorType     = USB_DT_INTERFACE,
+        .bInterfaceNumber    = 1,
+        .bNumEndpoints       = NUM_IF1_EP,
     },
     {
         {
@@ -528,6 +653,7 @@ static const struct usb_string_descriptor str2_descriptor = {
     .wData           = { PRODUCT_STRING },
 };
 
+__attribute__((aligned(4)))
 static const struct usb_string_descriptor *sec_dt_string[] = {
     &str0_descriptor,
     &str1_descriptor,

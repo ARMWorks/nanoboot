@@ -19,8 +19,8 @@
 #include "config.h"
 
 .arm
-.globl entry
-entry:
+.globl _entry
+_entry:
     /* Switch to SVC mode */
     mrs r0, cpsr
     bic r0, r0, #0x1f

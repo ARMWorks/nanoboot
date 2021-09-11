@@ -18,49 +18,62 @@
 
 #include "config.h"
 
-ENTRY(entry)
+ENTRY(_entry)
 
-MEMORY
-{
-  ROM (xr)      : ORIGIN = 0x00000000, LENGTH = 64K
-  SRAM (xrw)    : ORIGIN = 0xD0020000, LENGTH = 96K
-  SDRAM (xrw)   : ORIGIN = 0x22000000, LENGTH = 32M
-}
+/* global variables */
+PROVIDE (globalBlockSize = 0xD0037480);
+PROVIDE (globalSDHCInfoBit = 0xD0037484);
+PROVIDE (globalSDMMCBase = 0xD0037488);
+
+/* functions */
+PROVIDE (NF8_ReadPage_Adv_addr = 0xD0037F90);
+PROVIDE (NF16_ReadPage_Adv_addr = 0xD0037F94);
+PROVIDE (CopySDMMCtoMem_addr = 0xD0037F98);
+PROVIDE (CopyMMC4_3toMem_addr = 0xD0037F9C);
+PROVIDE (CopyOND_ReadMultiPages_addr = 0xD0037FA0);
+PROVIDE (CopyOND_ReadMultiPages_Adv_addr = 0xD0037FA4);
+PROVIDE (Copy_eSSDtoMem_addr = 0xD0037FA8);
+PROVIDE (Copy_eSSDtoMem_Adv_addr = 0xD0037FAC);
+PROVIDE (NF8_ReadPage_Adv128p_addr = 0xD0037FB0);
 
 SECTIONS
 {
-  .header :
-  {
-    LONG(0);
-    LONG(0);
-    LONG(0);
-    LONG(0);
-  } >SRAM
+  . = 0x23F00000;
 
+	. = ALIGN(4);
   .text :
   {
-    . = ALIGN(8);
+    __image_copy_start = .;
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    */startup.o(.text.entry)
+    . = ALIGN(32);
+    */startup.o(.text.ivt)
     */startup.o(.text)
-    */startup.o(.text*)
+    *(.text.early)
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */
     *(.glue_7t)        /* glue thumb to arm code */
-  } >SRAM
+  }
 
   .rodata :
   {
     . = ALIGN(8);
     *(.rodata)
     *(.rodata*)
-  } >SRAM
+  }
 
   .data :
   {
     . = ALIGN(8);
     *(.data)
     *(.data*)
-  } >SRAM
+    . = ALIGN(16);
+  	__image_copy_end = .;
+  }
 
   .bss (NOLOAD) :
   {
@@ -72,14 +85,14 @@ SECTIONS
     *(COMMON)
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >SDRAM
+  }
 
   .heap (NOLOAD) :
   {
     . = ALIGN(8);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
-  } >SDRAM
+  }
 
   /DISCARD/ :
   {

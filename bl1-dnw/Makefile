@@ -40,7 +40,7 @@ GDB				:= $(PREFIX)gdb
 OPT				:= -Os
 CSTD			?= -std=gnu11
 
-BINARY          := dnw
+BINARY          := bl1
 LDFLAGS			:= -specs=nano.specs -specs=nosys.specs
 
 ifeq ($(NDEBUG),1)
@@ -50,7 +50,7 @@ DEBUG			:= -ggdb3 -DDEBUG
 PROFILE			:= debug
 endif
 
-LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
+LDSCRIPT		:= bl1-reloc.ld
 
 ###############################################################################
 # Source files
@@ -58,7 +58,7 @@ LDSCRIPT		:= build/${PROFILE}/$(BINARY)_generated.ld
 VPATH			:= ../common ../drivers
 
 AS_SRCS			:= startup.S
-COMMON_AS_SRCS  := ../common/sdram.S
+COMMON_AS_SRCS  := ../common/dram.S
 DRIVER_AS_SRCS	:=
 
 C_SRCS			:= $(wildcard *.c)
@@ -78,7 +78,8 @@ INCLUDES        := -Iinclude \
 
 DEFS			+= $(INCLUDES) -DBL1 -DDNW
 FP_FLAGS		?= -mfloat-abi=soft
-ARCH_FLAGS		:= -mthumb -mthumb-interwork -mcpu=cortex-a8 $(FP_FLAGS)
+ARCH_FLAGS		:= -mthumb -mthumb-interwork -mcpu=cortex-a8 \
+				   -mno-unaligned-access $(FP_FLAGS)
 
 ###############################################################################
 # C flags
@@ -87,8 +88,8 @@ TGT_CFLAGS		+= $(OPT) $(CSTD) $(DEBUG)
 TGT_CFLAGS		+= $(ARCH_FLAGS)
 TGT_CFLAGS		+= -Wextra -Wimplicit-function-declaration
 TGT_CFLAGS		+= -Wstrict-prototypes -Wno-unused-parameter
-TGT_CFLAGS      += -Wno-implicit-fallthrough -Wno-main -Wno-shift-negative-value
-TGT_CFLAGS		+= -fno-common -ffunction-sections -fdata-sections
+TGT_CFLAGS		+= -Wno-implicit-fallthrough -Wno-main -Wno-shift-negative-value
+TGT_CFLAGS		+= -fno-common -ffunction-sections -fdata-sections -fno-strict-aliasing
 
 ###############################################################################
 # C++ flags
@@ -109,7 +110,7 @@ TGT_CPPFLAGS	+= $(DEFS)
 # Linker flags
 
 TGT_LDFLAGS		+= --static
-TGT_LDFLAGS		+= -T$(LDSCRIPT)
+TGT_LDFLAGS		+= -Tbuild/$(PROFILE)/$(LDSCRIPT).generated
 TGT_LDFLAGS		+= $(ARCH_FLAGS) $(DEBUG)
 TGT_LDFLAGS		+= -Wl,-Map=$(patsubst %.elf,%.map,$(@)) -Wl,--cref
 TGT_LDFLAGS		+= -Wl,--gc-sections
@@ -148,17 +149,17 @@ build/$(PROFILE)/%.list: build/$(PROFILE)/%.elf
 	@echo "  OBJDUMP $*.list"
 	$(Q)$(OBJDUMP) -S $< > $@
 
-build/$(PROFILE)/%.elf: $(OBJS) $(LDSCRIPT)
+build/$(PROFILE)/%.elf: $(OBJS) build/$(PROFILE)/$(LDSCRIPT).generated
 	@echo "  LD      $*.elf"
 	$(Q)$(LD) $(TGT_LDFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
 
 build/$(PROFILE)/%.bin: build/$(PROFILE)/%.elf
 	@echo "  OBJCOPY $*.bin"
-	$(Q)$(OBJCOPY) -Obinary $< $@
-	$(Q)../tools/header.py $@
+	$(Q)$(OBJCOPY) -Obinary $< $@.tmp
+	$(Q)../tools/header.py $@.tmp $@
 
-$(LDSCRIPT): ${BINARY}.ld
-	@echo "  CPP     ${BINARY}.ld"
+build/$(PROFILE)/$(LDSCRIPT).generated: $(LDSCRIPT)
+	@echo "  CPP     $(LDSCRIPT)"
 	$(Q)mkdir -p $(@D)
 	$(Q)$(CPP) $(TGT_CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) $< -o $@
 	$(Q)sed -i '/^#/d' $@

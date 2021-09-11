@@ -17,8 +17,8 @@
  */
 
 .arm
-.globl entry
-entry:
+.globl _entry
+_entry:
 	/* set LED GPIOs as output */
 	ldr r2, =0xE0200280
 	ldr r1, =0x00001111

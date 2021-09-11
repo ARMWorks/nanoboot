@@ -33,8 +33,8 @@ if __name__ == '__main__':
     parser.add_argument('FILE', type=FileType('rb', 0),
             help='file to load and execute')
     parser.add_argument('ADDRESS', nargs='?', type=lambda x: int(x, 0),
-            default=0x20000000,
-            help='load and execute address, defaults to 0x20000000')
+            default=0xD0020000,
+            help='load and execute address, defaults to 0xD0020000')
     args = parser.parse_args()
 
     dev = usb.core.find(idVendor=args.vendor, idProduct=args.product)

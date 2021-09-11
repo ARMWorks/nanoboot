@@ -22,7 +22,3 @@
 void icache_invalidate(void);
 void icache_enable(void);
 void icache_disable(void);
-void dcache_invalidate(void);
-void dcache_enable(void);
-void dcache_disable(void);
-void tlb_invalidate(void);

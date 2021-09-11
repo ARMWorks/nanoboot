@@ -19,8 +19,8 @@
 #include "config.h"
 
 .arm
-.globl entry
-entry:
+.globl _entry
+_entry:
     /* Switch to SVC mode */
     mrs r0, cpsr
     bic r0, r0, #0x1f
@@ -31,7 +31,7 @@ entry:
     mov fp, #0 /* no previous frame, so fp=0 */
 
 	bl clock_init
-	bl sdram_init
+	bl dram_init
 	bl uart0_init
 
 clear_bss:

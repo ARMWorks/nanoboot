@@ -18,14 +18,14 @@
 
 #include "config.h"
 
-ENTRY(entry)
+ENTRY(_entry)
 
-MEMORY
+/*MEMORY
 {
   ROM (xr)      : ORIGIN = 0x00000000, LENGTH = 64K
   SRAM (xrw)    : ORIGIN = 0xD0020000, LENGTH = 96K
   SDRAM (xrw)   : ORIGIN = 0x20000000, LENGTH = 1536M
-}
+}*/
 
 /* global variables */
 PROVIDE (globalBlockSize = 0xD0037480);
@@ -45,38 +45,42 @@ PROVIDE (NF8_ReadPage_Adv128p_addr = 0xD0037FB0);
 
 SECTIONS
 {
-  .header :
-  {
-    LONG(0);
-    LONG(0);
-    LONG(0);
-    LONG(0);
-  } >SRAM
+  . = 0xD0020000;
 
+	. = ALIGN(4);
   .text :
   {
-    . = ALIGN(8);
+    __image_copy_start = .;
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    */startup.o(.text.entry)
+    . = ALIGN(32);
+    */startup.o(.text.ivt)
     */startup.o(.text)
-    */startup.o(.text*)
+    *(.text.early)
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */
     *(.glue_7t)        /* glue thumb to arm code */
-  } >SRAM
+  }
 
   .rodata :
   {
     . = ALIGN(8);
     *(.rodata)
     *(.rodata*)
-  } >SRAM
+  }
 
   .data :
   {
     . = ALIGN(8);
     *(.data)
     *(.data*)
-  } >SRAM
+    . = ALIGN(16);
+  	__image_copy_end = .;
+  }
 
   .bss (NOLOAD) :
   {
@@ -88,20 +92,14 @@ SECTIONS
     *(COMMON)
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >SRAM
+  }
 
   .heap (NOLOAD) :
   {
     . = ALIGN(8);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
-  } >SRAM
-
-	.sdram (NOLOAD) :
-  {
-    *(.sdram)
-		*(.sdram*)
-	} >SDRAM
+  }
 
   /DISCARD/ :
   {

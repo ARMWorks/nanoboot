@@ -52,7 +52,8 @@ void uart0_set_baudrate(uint32_t baud)
 
 	uint32_t brdiv = (uint64_t)PCLK * 100 / (baud * 16);
 	writel((brdiv / 100) - 1, uart_base + UBRDIV_OFFSET);
-	writel((((brdiv % 100) * 16) + 50) / 100, uart_base + UDIVSLOT_OFFSET);
+	uint32_t index = (((brdiv % 100) * 16) + 50) / 100;
+	writel(divslot_table[index], uart_base + UDIVSLOT_OFFSET);
 }
 
 int uart0_getc(void)
